@@ -1,0 +1,492 @@
+//
+//  NewsView.swift
+//  团队工作台
+//
+
+import SwiftUI
+
+public struct NewsView: View {
+    @EnvironmentObject var store: WorkbenchStore
+    @ObservedObject var mailSyncService = MailSyncService.shared
+    
+    @State private var selectedArticleID: UUID?
+    @State private var selectedCategory: NewsCategory = .all
+    @State private var onlyBookmarked: Bool = false
+    @State private var searchText: String = ""
+    
+    // Comment input state
+    @State private var newCommentText: String = ""
+    @State private var showCommentSuccessToast: Bool = false
+    @State private var showSyncAlert: Bool = false
+    @State private var showDiscussionSection: Bool = true
+    
+    public init() {}
+    
+    private var filteredArticles: [NewsArticle] {
+        store.newsArticles.filter { article in
+            if selectedCategory != .all && article.category != selectedCategory {
+                return false
+            }
+            if onlyBookmarked && !article.isBookmarked {
+                return false
+            }
+            if !searchText.isEmpty {
+                let matchTitle = article.title.localizedCaseInsensitiveContains(searchText)
+                let matchContent = article.content.localizedCaseInsensitiveContains(searchText)
+                let matchTag = article.tags.contains { $0.localizedCaseInsensitiveContains(searchText) }
+                return matchTitle || matchContent || matchTag
+            }
+            return true
+        }
+        .sorted { $0.publishDate > $1.publishDate }
+    }
+    
+    public var body: some View {
+        HSplitView {
+            // Left: Compact News List
+            VStack(spacing: 0) {
+                categoryFilterSection
+                    .padding(12)
+                    .background(Color(NSColor.controlBackgroundColor))
+                
+                Divider()
+                
+                compactNewsListSection
+            }
+            .frame(minWidth: 300, idealWidth: 350, maxWidth: 420)
+            
+            // Right: Article Reader & Discussion
+            articleReaderSection
+                .frame(minWidth: 460, maxWidth: .infinity)
+        }
+        .searchable(text: $searchText, prompt: "搜索 Green Email 邮件标题、内容...")
+        .toolbar {
+            ToolbarItem(placement: .automatic) {
+                Button(action: { triggerMailSync(forceFullSync: false) }) {
+                    if mailSyncService.isSyncing {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Label("从邮件同步 Green Email", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                }
+                .help(mailSyncService.lastSyncTime != nil ? "增量同步：检索 \(formatSyncTime(mailSyncService.lastSyncTime!)) 后的新邮件（右键可选择全量同步）" : "从 macOS 邮件 App 提取发件人为 ic_gc_aha_sacs@apple.com 的 Green Email 邮件")
+                .disabled(mailSyncService.isSyncing)
+                .contextMenu {
+                    Button("增量同步（检索最新邮件）") {
+                        triggerMailSync(forceFullSync: false)
+                    }
+                    Button("全量重新同步（提取今年全部）") {
+                        triggerMailSync(forceFullSync: true)
+                    }
+                }
+            }
+        }
+        .alert("邮件同步结果", isPresented: $showSyncAlert) {
+            if mailSyncService.needsPrivacySettingsGuide {
+                Button("打开系统设置") {
+                    mailSyncService.openAutomationPrivacySettings()
+                }
+                Button("稍后设置", role: .cancel) { }
+            } else {
+                Button("确定", role: .cancel) { }
+            }
+        } message: {
+            if let error = mailSyncService.errorMessage {
+                Text(error)
+            } else if let result = mailSyncService.lastSyncResult {
+                Text(result)
+            }
+        }
+        .onAppear {
+            if selectedArticleID == nil {
+                selectedArticleID = filteredArticles.first?.id
+            }
+        }
+        .onChange(of: selectedArticleID) { _, newID in
+            if let id = newID {
+                store.incrementReadCount(id: id)
+            }
+        }
+    }
+    
+    // MARK: - Category Filter
+    
+    private var categoryFilterSection: some View {
+        VStack(spacing: 10) {
+            HStack(spacing: 8) {
+                ForEach(NewsCategory.allCases) { category in
+                    Button(action: {
+                        selectedCategory = category
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: category.iconName)
+                                .font(.system(size: 10))
+                            Text(category.rawValue)
+                                .font(.system(size: 11.5, weight: selectedCategory == category ? .semibold : .regular))
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(selectedCategory == category ? (category == .greenEmail ? Color.green : Color.accentColor) : Color.secondary.opacity(0.12))
+                        .foregroundColor(selectedCategory == category ? .white : .primary)
+                        .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+                
+                Spacer()
+                
+                Button(action: { triggerMailSync(forceFullSync: false) }) {
+                    HStack(spacing: 4) {
+                        if mailSyncService.isSyncing {
+                            ProgressView()
+                                .controlSize(.mini)
+                        } else {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                                .font(.system(size: 10))
+                        }
+                        Text("同步")
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.accentColor.opacity(0.12))
+                    .foregroundColor(.accentColor)
+                    .clipShape(RoundedRectangle(cornerRadius: 5))
+                }
+                .buttonStyle(.plain)
+                .disabled(mailSyncService.isSyncing)
+                .help(mailSyncService.lastSyncTime != nil ? "增量同步：检索 \(formatSyncTime(mailSyncService.lastSyncTime!)) 后的新邮件（右键可全量重新同步）" : "从邮件应用同步发件人为 ic_gc_aha_sacs@apple.com 的 Green Email")
+                .contextMenu {
+                    Button("增量同步（检查新邮件）") {
+                        triggerMailSync(forceFullSync: false)
+                    }
+                    Button("全量重新同步（提取今年全部）") {
+                        triggerMailSync(forceFullSync: true)
+                    }
+                }
+            }
+            
+            HStack(spacing: 6) {
+                Toggle(isOn: $onlyBookmarked) {
+                    Label("只看收藏", systemImage: "bookmark.fill")
+                        .font(.system(size: 11))
+                        .foregroundColor(onlyBookmarked ? .yellow : .secondary)
+                }
+                .toggleStyle(.checkbox)
+                
+                Spacer()
+                
+                if let lastSync = mailSyncService.lastSyncTime {
+                    HStack(spacing: 3) {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .font(.system(size: 9))
+                        Text("上次同步: \(formatSyncTime(lastSync))")
+                            .font(.system(size: 10))
+                    }
+                    .foregroundColor(.secondary)
+                    .help("点击同步后会自动识别在此时间点之后的新邮件并写入工作台")
+                } else {
+                    Text("尚未同步")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                }
+                
+                Text("· 共 \(filteredArticles.count) 封")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+    
+    // MARK: - Compact News List
+    
+    private var compactNewsListSection: some View {
+        Group {
+            if filteredArticles.isEmpty {
+                VStack(spacing: 12) {
+                    Spacer()
+                    Image(systemName: "envelope.badge")
+                        .font(.system(size: 32))
+                        .foregroundColor(.secondary.opacity(0.5))
+                    Text(searchText.isEmpty ? "暂无 Green Email 邮件" : "未找到匹配的邮件")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.secondary)
+                    
+                    HStack(spacing: 10) {
+                        Button("从邮件 App 提取") {
+                            triggerMailSync()
+                        }
+                        .font(.system(size: 12))
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                        
+                        Button("去手动起草") {
+                            store.selectedNavigation = .publish
+                        }
+                        .font(.system(size: 12))
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    }
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List(filteredArticles, selection: $selectedArticleID) { article in
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(alignment: .top, spacing: 6) {
+                            Image(systemName: "envelope.fill")
+                                .font(.system(size: 9))
+                                .foregroundColor(.green)
+                                .padding(.top, 3)
+                            
+                            Text(article.title)
+                                .font(.system(size: 12.5, weight: .medium))
+                                .foregroundColor(.primary)
+                                .lineLimit(2)
+                            
+                            Spacer()
+                            
+                            if article.isBookmarked {
+                                Image(systemName: "bookmark.fill")
+                                    .foregroundColor(.yellow)
+                                    .font(.system(size: 9))
+                                    .padding(.top, 2)
+                            }
+                        }
+                        
+                        HStack {
+                            if !article.comments.isEmpty {
+                                Label("\(article.comments.count)", systemImage: "bubble.left.fill")
+                                    .font(.system(size: 9.5))
+                                    .foregroundColor(.accentColor)
+                            }
+                            
+                            Spacer()
+                            
+                            Text(formatDate(article.publishDate))
+                                .font(.system(size: 10))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                    .tag(article.id)
+                }
+                .listStyle(.inset(alternatesRowBackgrounds: true))
+            }
+        }
+    }
+    
+    // MARK: - Article Reader & Discussion (Clean & Minimal Non-nested Layout)
+    
+    private var articleReaderSection: some View {
+        Group {
+            if let id = selectedArticleID,
+               let article = store.newsArticles.first(where: { $0.id == id }) {
+                VStack(spacing: 0) {
+                    // Top Title Header Bar
+                    HStack(alignment: .center, spacing: 12) {
+                        Text(article.title)
+                            .font(.system(size: 17, weight: .bold))
+                            .foregroundColor(.primary)
+                            .textSelection(.enabled)
+                            .lineLimit(2)
+                        
+                        Spacer()
+                        
+                        Button(action: {
+                            showDiscussionSection.toggle()
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "bubble.left.and.bubble.right.fill")
+                                    .font(.system(size: 11))
+                                Text("讨论 (\(article.comments.count))")
+                                    .font(.system(size: 11, weight: .medium))
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(showDiscussionSection ? Color.accentColor.opacity(0.15) : Color.secondary.opacity(0.1))
+                            .foregroundColor(showDiscussionSection ? .accentColor : .primary)
+                            .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .help(showDiscussionSection ? "收起讨论区" : "展开讨论区")
+                        
+                        Button(action: {
+                            store.toggleBookmark(id: article.id)
+                        }) {
+                            Image(systemName: article.isBookmarked ? "bookmark.fill" : "bookmark")
+                                .font(.system(size: 14))
+                                .foregroundColor(article.isBookmarked ? .yellow : .secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .help(article.isBookmarked ? "取消收藏" : "收藏此邮件")
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+                    .background(Color(NSColor.controlBackgroundColor))
+                    
+                    Divider()
+                    
+                    // Main Content: Full-frame native WKWebView with 120Hz smooth momentum scrolling & Retina vector text
+                    if let html = article.htmlContent, !html.isEmpty {
+                        HTMLMailView(htmlContent: html)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        ScrollView {
+                            GreenEmailContentView(content: article.content)
+                                .padding(24)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                    
+                    // Bottom discussion panel (expandable)
+                    if showDiscussionSection {
+                        Divider()
+                        discussionSection(for: article)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 10)
+                            .background(Color(NSColor.controlBackgroundColor))
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color(NSColor.controlBackgroundColor))
+            } else {
+                VStack(spacing: 12) {
+                    Image(systemName: "envelope.open")
+                        .font(.system(size: 40))
+                        .foregroundColor(.secondary.opacity(0.5))
+                    Text("请在左侧选择一封 Green Email 进行阅读")
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color(NSColor.controlBackgroundColor))
+            }
+        }
+    }
+    
+    // MARK: - Discussion & Comments
+    
+    private func discussionSection(for article: NewsArticle) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            // Existing Comments List
+            if !article.comments.isEmpty {
+                ScrollView(.vertical) {
+                    VStack(spacing: 6) {
+                        ForEach(article.comments) { comment in
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Image(systemName: comment.avatarSymbol)
+                                        .foregroundColor(.accentColor)
+                                        .font(.system(size: 12))
+                                    
+                                    Text(comment.author)
+                                        .font(.system(size: 11.5, weight: .semibold))
+                                    
+                                    Text("· \(comment.department)")
+                                        .font(.system(size: 10.5))
+                                        .foregroundColor(.secondary)
+                                    
+                                    Spacer()
+                                    
+                                    Text(formatDate(comment.createdAt))
+                                        .font(.system(size: 9.5))
+                                        .foregroundColor(.secondary)
+                                    
+                                    if comment.author == store.currentUser.name {
+                                        Button(action: {
+                                            store.deleteComment(articleId: article.id, commentId: comment.id)
+                                        }) {
+                                            Image(systemName: "trash")
+                                                .font(.system(size: 9.5))
+                                                .foregroundColor(.secondary)
+                                        }
+                                        .buttonStyle(.plain)
+                                        .help("删除我的讨论内容")
+                                    }
+                                }
+                                
+                                Text(comment.content)
+                                    .font(.system(size: 12.5))
+                                    .foregroundColor(.primary)
+                                    .textSelection(.enabled)
+                            }
+                            .padding(8)
+                            .background(Color.secondary.opacity(0.06))
+                            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                        }
+                    }
+                }
+                .frame(maxHeight: 120)
+            }
+            
+            // New Comment Input Box
+            HStack(spacing: 8) {
+                TextField("写下您的讨论观点或处理备注...", text: $newCommentText)
+                    .textFieldStyle(.roundedBorder)
+                    .controlSize(.small)
+                
+                Button(action: {
+                    submitComment(for: article)
+                }) {
+                    Text("发送")
+                        .font(.system(size: 12))
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .disabled(newCommentText.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+        }
+    }
+    
+    // MARK: - Actions
+    
+    private func triggerMailSync(forceFullSync: Bool = false) {
+        Task {
+            _ = await mailSyncService.syncGreenEmailsFromMail(into: store, forceFullSync: forceFullSync)
+            showSyncAlert = true
+            if selectedArticleID == nil {
+                selectedArticleID = filteredArticles.first?.id
+            }
+        }
+    }
+    
+    private func submitComment(for article: NewsArticle) {
+        let content = newCommentText.trimmingCharacters(in: .whitespaces)
+        guard !content.isEmpty else { return }
+        
+        let comment = NewsComment(
+            author: store.currentUser.name,
+            department: store.currentUser.department,
+            content: content,
+            createdAt: Date(),
+            avatarSymbol: store.currentUser.avatarSymbol
+        )
+        
+        store.addComment(to: article.id, comment: comment)
+        newCommentText = ""
+    }
+    
+    private func formatSyncTime(_ date: Date) -> String {
+        let cal = Calendar.current
+        let timeFormatter = DateFormatter()
+        timeFormatter.dateFormat = "HH:mm"
+        
+        if cal.isDateInToday(date) {
+            return "今天 \(timeFormatter.string(from: date))"
+        } else if cal.isDateInYesterday(date) {
+            return "昨天 \(timeFormatter.string(from: date))"
+        } else {
+            let df = DateFormatter()
+            df.dateFormat = "MM-dd HH:mm"
+            return df.string(from: date)
+        }
+    }
+    
+    private func formatDate(_ date: Date) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .short
+        return formatter.localizedString(for: date, relativeTo: Date())
+    }
+}
