@@ -45,6 +45,7 @@ public struct SidebarView: View {
         case .dashboard: return .blue
         case .announcements: return .red
         case .news: return .green
+        case .faq: return .teal
         case .publish: return .orange
         case .settings: return .gray
         }

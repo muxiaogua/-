@@ -11,7 +11,10 @@ public struct AnnouncementsView: View {
     @State private var selectedPriorityFilter: String = "全部"
     @State private var selectedStatusFilter: String = "全部"
     @State private var searchText: String = ""
-    @State private var showAcknowledgeToast = false
+    @State private var showingDeleteAlert = false
+    @State private var itemToDelete: Announcement? = nil
+    @State private var showRemindSuccessAlert = false
+    @State private var reminderAlertMessage = ""
     
     public init() {}
     
@@ -22,22 +25,22 @@ public struct AnnouncementsView: View {
                 return false
             }
             // Status Filter
-            if selectedStatusFilter == "待签收" && (!item.requiresAcknowledgment || item.isAcknowledged) {
+            if selectedStatusFilter == "未读" && (!item.requiresAcknowledgment || item.isAcknowledged) {
                 return false
             }
-            if selectedStatusFilter == "已签收" && !item.isAcknowledged {
+            if selectedStatusFilter == "已读" && !item.isAcknowledged {
                 return false
             }
             if selectedStatusFilter == "置顶" && !item.isPinned {
                 return false
             }
-            // Search text
-            if !searchText.isEmpty {
-                let matchTitle = item.title.localizedCaseInsensitiveContains(searchText)
-                let matchContent = item.content.localizedCaseInsensitiveContains(searchText)
-                let matchAuthor = item.author.localizedCaseInsensitiveContains(searchText)
-                let matchTag = item.tags.contains { $0.localizedCaseInsensitiveContains(searchText) }
-                return matchTitle || matchContent || matchAuthor || matchTag
+            // Multi-token Search text
+            let tokens = searchText.split(whereSeparator: { $0.isWhitespace || $0 == "+" || $0 == "," }).map(String.init).filter { !$0.isEmpty }
+            if !tokens.isEmpty {
+                let combinedText = "\(item.title) \(item.content) \(item.author) \(item.tags.joined(separator: " "))"
+                return tokens.allSatisfy { token in
+                    combinedText.localizedCaseInsensitiveContains(token)
+                }
             }
             return true
         }
@@ -67,10 +70,45 @@ public struct AnnouncementsView: View {
             detailContentView
                 .frame(minWidth: 400, maxWidth: .infinity)
         }
-        .searchable(text: $searchText, prompt: "搜索公告标题、内容、发布人...")
+        .alert("确认删除公告", isPresented: $showingDeleteAlert) {
+            Button("确认删除", role: .destructive) {
+                if let toDelete = itemToDelete {
+                    store.deleteAnnouncement(id: toDelete.id)
+                    if selectedAnnouncementID == toDelete.id {
+                        selectedAnnouncementID = filteredAnnouncements.first?.id
+                    }
+                    itemToDelete = nil
+                }
+            }
+            Button("取消", role: .cancel) {
+                itemToDelete = nil
+            }
+        } message: {
+            if let toDelete = itemToDelete {
+                Text("确定要删除由您发布的公告「\(toDelete.title)」吗？删除后团队成员将无法再查看，此操作无法撤销。")
+            }
+        }
+        .alert("催签提醒已发送", isPresented: $showRemindSuccessAlert) {
+            Button("确定", role: .cancel) { }
+        } message: {
+            Text(reminderAlertMessage)
+        }
         .onAppear {
-            if selectedAnnouncementID == nil {
+            if let targetID = store.selectedAnnouncementID {
+                selectedAnnouncementID = targetID
+            } else if selectedAnnouncementID == nil {
                 selectedAnnouncementID = filteredAnnouncements.first?.id
+                store.selectedAnnouncementID = selectedAnnouncementID
+            }
+        }
+        .onChange(of: store.selectedAnnouncementID) { _, newID in
+            if let id = newID, selectedAnnouncementID != id {
+                selectedAnnouncementID = id
+            }
+        }
+        .onChange(of: selectedAnnouncementID) { _, newID in
+            if let id = newID {
+                store.selectedAnnouncementID = id
             }
         }
     }
@@ -79,6 +117,34 @@ public struct AnnouncementsView: View {
     
     private var filterBar: some View {
         VStack(spacing: 8) {
+            // Inline Search Bar
+            HStack(spacing: 6) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 11.5))
+                    .foregroundColor(.secondary)
+                
+                TextField("搜索公告标题、内容、发布人...", text: $searchText)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 12))
+                
+                if !searchText.isEmpty {
+                    Button(action: { searchText = "" }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5.5)
+            .background(Color(NSColor.textBackgroundColor))
+            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .stroke(Color.secondary.opacity(0.18), lineWidth: 1)
+            )
+            
             HStack {
                 Text("重要度:")
                     .font(.system(size: 11))
@@ -98,8 +164,8 @@ public struct AnnouncementsView: View {
                     .foregroundColor(.secondary)
                 Picker("状态", selection: $selectedStatusFilter) {
                     Text("全部").tag("全部")
-                    Text("待签收").tag("待签收")
-                    Text("已签收").tag("已签收")
+                    Text("未读").tag("未读")
+                    Text("已读").tag("已读")
                     Text("置顶").tag("置顶")
                 }
                 .pickerStyle(.segmented)
@@ -145,14 +211,21 @@ public struct AnnouncementsView: View {
                             Spacer()
                             
                             if item.requiresAcknowledgment {
+                                let acked = item.acknowledgments.count
                                 if item.isAcknowledged {
-                                    Text("已签收")
+                                    Text("已读")
                                         .font(.system(size: 10, weight: .semibold))
                                         .foregroundColor(.green)
                                 } else {
-                                    Text("待签收")
+                                    Text("未读")
                                         .font(.system(size: 10, weight: .bold))
                                         .foregroundColor(.red)
+                                }
+                                
+                                if item.author == store.currentUser.name {
+                                    Text("(\(acked)人已读)")
+                                        .font(.system(size: 9.5))
+                                        .foregroundColor(.secondary)
                                 }
                             }
                         }
@@ -168,8 +241,8 @@ public struct AnnouncementsView: View {
                             .lineLimit(2)
                         
                         HStack {
-                            Text("\(item.author) · \(item.department)")
-                                .font(.system(size: 11))
+                            Text(item.author)
+                                .font(.system(size: 11, weight: .medium))
                                 .foregroundColor(.secondary)
                             Spacer()
                             Text(formatDate(item.publishDate))
@@ -179,6 +252,22 @@ public struct AnnouncementsView: View {
                     }
                     .padding(.vertical, 6)
                     .tag(item.id)
+                    .contextMenu {
+                        if item.author == store.currentUser.name {
+                            Button(role: .destructive) {
+                                itemToDelete = item
+                                showingDeleteAlert = true
+                            } label: {
+                                Label("删除此公告", systemImage: "trash")
+                            }
+                            Divider()
+                        }
+                        Button {
+                            store.togglePinAnnouncement(id: item.id)
+                        } label: {
+                            Label(item.isPinned ? "取消置顶" : "置顶公告", systemImage: item.isPinned ? "pin.slash" : "pin")
+                        }
+                    }
                 }
                 .listStyle(.inset(alternatesRowBackgrounds: true))
             }
@@ -209,7 +298,28 @@ public struct AnnouncementsView: View {
                                 }) {
                                     Image(systemName: item.isPinned ? "pin.slash.fill" : "pin")
                                 }
+                                .buttonStyle(.plain)
                                 .help(item.isPinned ? "取消置顶" : "置顶公告")
+                                
+                                if item.author == store.currentUser.name {
+                                    Button(action: {
+                                        itemToDelete = item
+                                        showingDeleteAlert = true
+                                    }) {
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "trash")
+                                            Text("删除")
+                                        }
+                                        .font(.system(size: 11.5, weight: .medium))
+                                        .foregroundColor(.red)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 3)
+                                        .background(Color.red.opacity(0.1))
+                                        .clipShape(RoundedRectangle(cornerRadius: 5))
+                                    }
+                                    .buttonStyle(.plain)
+                                    .help("删除由我起草的这篇公告")
+                                }
                             }
                             
                             Text(item.title)
@@ -218,7 +328,6 @@ public struct AnnouncementsView: View {
                             
                             HStack(spacing: 16) {
                                 Label(item.author, systemImage: "person.circle")
-                                Label(item.department, systemImage: "building.2")
                                 Label(formatFullDate(item.publishDate), systemImage: "clock")
                             }
                             .font(.system(size: 12))
@@ -263,7 +372,7 @@ public struct AnnouncementsView: View {
                         
                         Spacer(minLength: 20)
                         
-                        // Acknowledgment Card
+                        // Acknowledgment Card & Sign-off Tracker
                         if item.requiresAcknowledgment {
                             acknowledgmentCard(for: item)
                         }
@@ -287,41 +396,110 @@ public struct AnnouncementsView: View {
     }
     
     private func acknowledgmentCard(for item: Announcement) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            if item.isAcknowledged {
-                HStack(spacing: 10) {
-                    Image(systemName: "checkmark.seal.fill")
-                        .font(.system(size: 22))
-                        .foregroundColor(.green)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("您已完成签收确认")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(.green)
-                        if let ackDate = item.acknowledgedAt {
-                            Text("签收时间: \(formatFullDate(ackDate)) · 签收人: \(store.currentUser.name)")
-                                .font(.system(size: 11))
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                    Spacer()
+        let totalMembers = max(store.allDiscoveredTeamMembers.count, item.acknowledgments.count)
+        let ackedCount = item.acknowledgments.count
+        let unackedMembers = store.unacknowledgedMembers(for: item)
+        let progress = totalMembers > 0 ? Double(ackedCount) / Double(totalMembers) : 0.0
+        let isAuthor = (item.author == store.currentUser.name)
+        let currentUserAcked = item.isAcknowledged || item.acknowledgments.contains(where: { $0.memberName == store.currentUser.name })
+        
+        return VStack(alignment: .leading, spacing: 14) {
+            // Header with statistics and progress
+            HStack(alignment: .center) {
+                Label("全员已读追踪看板", systemImage: "checklist.checked")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(.primary)
+                
+                Spacer()
+                
+                Text("已读 \(ackedCount) / \(totalMembers) 人 (\(Int(progress * 100))%)")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(unackedMembers.isEmpty ? .green : .orange)
+            }
+            
+            // Progress Bar
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color.secondary.opacity(0.15))
+                        .frame(height: 7)
+                    
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(unackedMembers.isEmpty ? Color.green : Color.orange)
+                        .frame(width: max(0, geo.size.width * CGFloat(progress)), height: 7)
                 }
-                .padding(14)
-                .background(Color.green.opacity(0.1))
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .stroke(Color.green.opacity(0.3), lineWidth: 1)
-                )
-            } else {
+            }
+            .frame(height: 7)
+            
+            // 1. Unread Members Section (Highlighted for Publisher & Team)
+            if !unackedMembers.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Image(systemName: "exclamationmark.circle.fill")
-                            .foregroundColor(.orange)
-                        Text("需要签收确认")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(.primary)
+                        Label("未读人员 (\(unackedMembers.count) 人):", systemImage: "exclamationmark.circle.fill")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.red)
+                        
+                        Spacer()
+                        
+                        if isAuthor {
+                            Button(action: {
+                                store.sendAcknowledgmentReminder(for: item)
+                                reminderAlertMessage = "已向 \(unackedMembers.count) 位未读成员（\(unackedMembers.map { $0.name }.joined(separator: "、"))）发送提醒通知！"
+                                showRemindSuccessAlert = true
+                            }) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "bell.badge.fill")
+                                    Text("一键提醒未读成员")
+                                }
+                                .font(.system(size: 11, weight: .medium))
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(.orange)
+                            .controlSize(.small)
+                        }
                     }
-                    Text("发布人要求团队成员必须阅读并签收此通知，请在确认了解相关事项后点击下方签收按钮。")
+                    
+                    // Unread member badges
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 6) {
+                            ForEach(unackedMembers) { member in
+                                HStack(spacing: 4) {
+                                    Image(systemName: member.avatarSymbol)
+                                        .font(.system(size: 9))
+                                    Text(member.name)
+                                        .font(.system(size: 11, weight: .medium))
+                                }
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.red.opacity(0.1))
+                                .foregroundColor(.red)
+                                .clipShape(Capsule())
+                            }
+                        }
+                    }
+                }
+                .padding(10)
+                .background(Color.red.opacity(0.04))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            } else {
+                HStack(spacing: 6) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.green)
+                    Text("🎉 团队全员已 100% 确认已读！")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.green)
+                }
+                .padding(10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.green.opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+            
+            // 2. Personal Action for Current Reader
+            if !currentUserAcked {
+                Divider()
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("您尚未读此公告，请阅读后确认：")
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
                     
@@ -330,23 +508,67 @@ public struct AnnouncementsView: View {
                     }) {
                         HStack {
                             Image(systemName: "checkmark.circle.fill")
-                            Text("本人已仔细阅读并确认签收")
+                            Text("本人已仔细阅读并确认")
                         }
                         .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-                    .padding(.top, 4)
+                    .controlSize(.regular)
                 }
-                .padding(16)
-                .background(Color.orange.opacity(0.08))
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .stroke(Color.orange.opacity(0.3), lineWidth: 1)
-                )
+            } else {
+                HStack(spacing: 8) {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 16))
+                        .foregroundColor(.green)
+                    Text("您已确认已读")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.green)
+                    if let ackDate = item.acknowledgedAt {
+                        Text("(\(formatFullDate(ackDate)))")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                }
+                .padding(8)
+                .background(Color.green.opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+            }
+            
+            // 3. Acknowledged Details List
+            if !item.acknowledgments.isEmpty {
+                Divider()
+                
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("已确认已读成员 (\(item.acknowledgments.count) 人)")
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .foregroundColor(.secondary)
+                    
+                    ForEach(item.acknowledgments) { ack in
+                        HStack(spacing: 6) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                                .font(.system(size: 11))
+                            Text(ack.memberName)
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.primary)
+                            Spacer()
+                            Text(formatFullDate(ack.acknowledgedAt))
+                                .font(.system(size: 10.5))
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
             }
         }
+        .padding(16)
+        .background(Color(NSColor.controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(Color.secondary.opacity(0.15), lineWidth: 1)
+        )
     }
     
     private func formatDate(_ date: Date) -> String {

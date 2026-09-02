@@ -15,7 +15,7 @@ public struct PublishView: View {
         var id: String { rawValue }
     }
     
-    @State private var selectedType: PublishType = .news
+    @State private var selectedType: PublishType = .announcement
     
     // Announcement Form States
     @State private var announcementTitle: String = ""
@@ -109,17 +109,17 @@ public struct PublishView: View {
                 }
                 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("发布人 / 部门")
+                    Text("发布人")
                         .font(.system(size: 13, weight: .semibold))
-                    Text("\(store.currentUser.name) (\(store.currentUser.department))")
-                        .font(.system(size: 13))
-                        .foregroundColor(.secondary)
+                    Text(store.currentUser.name)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.primary)
                         .padding(.top, 4)
                 }
             }
             
             HStack(spacing: 20) {
-                Toggle("要求全员签收确认", isOn: $announcementRequiresAck)
+                Toggle("要求全员阅读并确认已读", isOn: $announcementRequiresAck)
                     .toggleStyle(.checkbox)
                 Toggle("在列表与首页置顶", isOn: $announcementIsPinned)
                     .toggleStyle(.checkbox)
@@ -275,7 +275,6 @@ public struct PublishView: View {
             title: announcementTitle.trimmingCharacters(in: .whitespaces),
             content: announcementContent.trimmingCharacters(in: .whitespaces),
             author: store.currentUser.name,
-            department: store.currentUser.department,
             publishDate: Date(),
             priority: announcementPriority,
             isPinned: announcementIsPinned,

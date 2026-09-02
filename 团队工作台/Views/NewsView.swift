@@ -22,19 +22,29 @@ public struct NewsView: View {
     
     public init() {}
     
+    private var isBrowsingAllWithoutSearch: Bool {
+        selectedCategory == .all && searchText.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+    
     private var filteredArticles: [NewsArticle] {
-        store.newsArticles.filter { article in
+        if isBrowsingAllWithoutSearch {
+            return []
+        }
+        
+        let tokens = searchText.split(whereSeparator: { $0.isWhitespace || $0 == "+" || $0 == "," }).map(String.init).filter { !$0.isEmpty }
+        
+        return store.newsArticles.filter { article in
             if selectedCategory != .all && article.category != selectedCategory {
                 return false
             }
             if onlyBookmarked && !article.isBookmarked {
                 return false
             }
-            if !searchText.isEmpty {
-                let matchTitle = article.title.localizedCaseInsensitiveContains(searchText)
-                let matchContent = article.content.localizedCaseInsensitiveContains(searchText)
-                let matchTag = article.tags.contains { $0.localizedCaseInsensitiveContains(searchText) }
-                return matchTitle || matchContent || matchTag
+            if !tokens.isEmpty {
+                let combinedText = "\(article.title) \(article.content) \(article.summary) \(article.tags.joined(separator: " "))"
+                return tokens.allSatisfy { token in
+                    combinedText.localizedCaseInsensitiveContains(token)
+                }
             }
             return true
         }
@@ -45,7 +55,7 @@ public struct NewsView: View {
         HSplitView {
             // Left: Compact News List
             VStack(spacing: 0) {
-                categoryFilterSection
+                mailSearchAndFilterSection
                     .padding(12)
                     .background(Color(NSColor.controlBackgroundColor))
                 
@@ -58,29 +68,6 @@ public struct NewsView: View {
             // Right: Article Reader & Discussion
             articleReaderSection
                 .frame(minWidth: 460, maxWidth: .infinity)
-        }
-        .searchable(text: $searchText, prompt: "搜索 Green Email 邮件标题、内容...")
-        .toolbar {
-            ToolbarItem(placement: .automatic) {
-                Button(action: { triggerMailSync(forceFullSync: false) }) {
-                    if mailSyncService.isSyncing {
-                        ProgressView()
-                            .controlSize(.small)
-                    } else {
-                        Label("从邮件同步 Green Email", systemImage: "arrow.triangle.2.circlepath")
-                    }
-                }
-                .help(mailSyncService.lastSyncTime != nil ? "增量同步：检索 \(formatSyncTime(mailSyncService.lastSyncTime!)) 后的新邮件（右键可选择全量同步）" : "从 macOS 邮件 App 提取发件人为 ic_gc_aha_sacs@apple.com 的 Green Email 邮件")
-                .disabled(mailSyncService.isSyncing)
-                .contextMenu {
-                    Button("增量同步（检索最新邮件）") {
-                        triggerMailSync(forceFullSync: false)
-                    }
-                    Button("全量重新同步（提取今年全部）") {
-                        triggerMailSync(forceFullSync: true)
-                    }
-                }
-            }
         }
         .alert("邮件同步结果", isPresented: $showSyncAlert) {
             if mailSyncService.needsPrivacySettingsGuide {
@@ -99,42 +86,71 @@ public struct NewsView: View {
             }
         }
         .onAppear {
-            if selectedArticleID == nil {
+            if let targetID = store.selectedNewsArticleID,
+               let article = store.newsArticles.first(where: { $0.id == targetID }) {
+                selectedCategory = article.category
+                selectedArticleID = article.id
+            } else if selectedCategory != .all {
                 selectedArticleID = filteredArticles.first?.id
+                store.selectedNewsArticleID = selectedArticleID
+            }
+        }
+        .onChange(of: store.selectedNewsArticleID) { _, newID in
+            if let targetID = newID,
+               let article = store.newsArticles.first(where: { $0.id == targetID }) {
+                selectedCategory = article.category
+                selectedArticleID = article.id
+            }
+        }
+        .onChange(of: selectedCategory) { _, newCat in
+            if newCat == .all && searchText.trimmingCharacters(in: .whitespaces).isEmpty {
+                selectedArticleID = nil
+                store.selectedNewsArticleID = nil
+            } else if selectedArticleID == nil || !filteredArticles.contains(where: { $0.id == selectedArticleID }) {
+                selectedArticleID = filteredArticles.first?.id
+                store.selectedNewsArticleID = selectedArticleID
             }
         }
         .onChange(of: selectedArticleID) { _, newID in
             if let id = newID {
+                store.selectedNewsArticleID = id
                 store.incrementReadCount(id: id)
             }
         }
     }
     
-    // MARK: - Category Filter
+    // MARK: - Search & Category Filter Header (Left Panel)
     
-    private var categoryFilterSection: some View {
-        VStack(spacing: 10) {
+    private var mailSearchAndFilterSection: some View {
+        VStack(spacing: 8) {
+            // 1. Inline Search Bar + Sync Button
             HStack(spacing: 8) {
-                ForEach(NewsCategory.allCases) { category in
-                    Button(action: {
-                        selectedCategory = category
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: category.iconName)
-                                .font(.system(size: 10))
-                            Text(category.rawValue)
-                                .font(.system(size: 11.5, weight: selectedCategory == category ? .semibold : .regular))
+                HStack(spacing: 6) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 11.5))
+                        .foregroundColor(.secondary)
+                    
+                    TextField("搜索邮件标题、内容...", text: $searchText)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 12))
+                    
+                    if !searchText.isEmpty {
+                        Button(action: { searchText = "" }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
                         }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(selectedCategory == category ? (category == .greenEmail ? Color.green : Color.accentColor) : Color.secondary.opacity(0.12))
-                        .foregroundColor(selectedCategory == category ? .white : .primary)
-                        .clipShape(Capsule())
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
-                
-                Spacer()
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+                .background(Color(NSColor.textBackgroundColor))
+                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .stroke(Color.secondary.opacity(0.18), lineWidth: 1)
+                )
                 
                 Button(action: { triggerMailSync(forceFullSync: false) }) {
                     HStack(spacing: 4) {
@@ -143,16 +159,20 @@ public struct NewsView: View {
                                 .controlSize(.mini)
                         } else {
                             Image(systemName: "arrow.triangle.2.circlepath")
-                                .font(.system(size: 10))
+                                .font(.system(size: 10.5))
                         }
                         Text("同步")
-                            .font(.system(size: 11, weight: .medium))
+                            .font(.system(size: 11.5, weight: .medium))
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.accentColor.opacity(0.12))
-                    .foregroundColor(.accentColor)
-                    .clipShape(RoundedRectangle(cornerRadius: 5))
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 5.5)
+                    .background(Color.green.opacity(0.12))
+                    .foregroundColor(.green)
+                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .stroke(Color.green.opacity(0.35), lineWidth: 1)
+                    )
                 }
                 .buttonStyle(.plain)
                 .disabled(mailSyncService.isSyncing)
@@ -167,6 +187,37 @@ public struct NewsView: View {
                 }
             }
             
+            // 2. Category Filter Pills (Only actual configured categories)
+            HStack(spacing: 6) {
+                ForEach(NewsCategory.allCases) { cat in
+                    let isSelected = (selectedCategory == cat)
+                    Button(action: {
+                        selectedCategory = cat
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: cat.iconName)
+                                .font(.system(size: 9.5))
+                            Text(cat.rawValue)
+                                .font(.system(size: 11, weight: isSelected ? .semibold : .regular))
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4.5)
+                        .background(isSelected ? (cat == .greenEmail ? Color.green : Color(NSColor.labelColor)) : Color(NSColor.controlBackgroundColor))
+                        .foregroundColor(isSelected ? Color.white : Color.primary)
+                        .clipShape(Capsule())
+                        .overlay(
+                            Capsule()
+                                .stroke(isSelected ? Color.clear : Color.secondary.opacity(0.18), lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+                
+                Spacer()
+            }
+            .padding(.vertical, 1)
+            
+            // 3. Only Bookmarked Toggle + Sync Status & Total Count
             HStack(spacing: 6) {
                 Toggle(isOn: $onlyBookmarked) {
                     Label("只看收藏", systemImage: "bookmark.fill")
@@ -181,19 +232,19 @@ public struct NewsView: View {
                     HStack(spacing: 3) {
                         Image(systemName: "clock.arrow.circlepath")
                             .font(.system(size: 9))
-                        Text("上次同步: \(formatSyncTime(lastSync))")
+                        Text(formatSyncTime(lastSync))
                             .font(.system(size: 10))
                     }
                     .foregroundColor(.secondary)
-                    .help("点击同步后会自动识别在此时间点之后的新邮件并写入工作台")
+                    .help("上次同步时间：\(formatSyncTime(lastSync))")
                 } else {
                     Text("尚未同步")
                         .font(.system(size: 10))
                         .foregroundColor(.secondary)
                 }
                 
-                Text("· 共 \(filteredArticles.count) 封")
-                    .font(.system(size: 10))
+                Text(isBrowsingAllWithoutSearch ? "· 共 \(store.newsArticles.count) 封" : "· 共 \(filteredArticles.count) 封")
+                    .font(.system(size: 10.5))
                     .foregroundColor(.secondary)
             }
         }
@@ -203,13 +254,22 @@ public struct NewsView: View {
     
     private var compactNewsListSection: some View {
         Group {
-            if filteredArticles.isEmpty {
+            if isBrowsingAllWithoutSearch {
+                VStack(spacing: 12) {
+                    Spacer()
+                    Text("请输入关键词或选择上方分类查看内容")
+                        .font(.system(size: 13, weight: .regular))
+                        .foregroundColor(Color(NSColor.secondaryLabelColor))
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if filteredArticles.isEmpty {
                 VStack(spacing: 12) {
                     Spacer()
                     Image(systemName: "envelope.badge")
                         .font(.system(size: 32))
                         .foregroundColor(.secondary.opacity(0.5))
-                    Text(searchText.isEmpty ? "暂无 Green Email 邮件" : "未找到匹配的邮件")
+                    Text(searchText.isEmpty ? "暂无该分类下的邮件" : "未找到匹配的邮件")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundColor(.secondary)
                     
@@ -235,9 +295,9 @@ public struct NewsView: View {
                 List(filteredArticles, selection: $selectedArticleID) { article in
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(alignment: .top, spacing: 6) {
-                            Image(systemName: "envelope.fill")
+                            Image(systemName: article.category == .greenEmail ? "envelope.fill" : article.category.iconName)
                                 .font(.system(size: 9))
-                                .foregroundColor(.green)
+                                .foregroundColor(article.category == .greenEmail ? .green : .accentColor)
                                 .padding(.top, 3)
                             
                             Text(article.title)
@@ -277,11 +337,22 @@ public struct NewsView: View {
         }
     }
     
-    // MARK: - Article Reader & Discussion (Clean & Minimal Non-nested Layout)
+    // MARK: - Article Reader & Discussion
     
     private var articleReaderSection: some View {
         Group {
-            if let id = selectedArticleID,
+            if isBrowsingAllWithoutSearch {
+                VStack(spacing: 12) {
+                    Image(systemName: "envelope.open")
+                        .font(.system(size: 40))
+                        .foregroundColor(.secondary.opacity(0.4))
+                    Text("请输入关键词或在左侧选择分类查看邮件")
+                        .font(.system(size: 13.5))
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color(NSColor.controlBackgroundColor))
+            } else if let id = selectedArticleID,
                let article = store.newsArticles.first(where: { $0.id == id }) {
                 VStack(spacing: 0) {
                     // Top Title Header Bar
@@ -356,7 +427,7 @@ public struct NewsView: View {
                     Image(systemName: "envelope.open")
                         .font(.system(size: 40))
                         .foregroundColor(.secondary.opacity(0.5))
-                    Text("请在左侧选择一封 Green Email 进行阅读")
+                    Text("请在左侧选择一封邮件进行阅读")
                         .font(.system(size: 13))
                         .foregroundColor(.secondary)
                 }
@@ -383,10 +454,6 @@ public struct NewsView: View {
                                     
                                     Text(comment.author)
                                         .font(.system(size: 11.5, weight: .semibold))
-                                    
-                                    Text("· \(comment.department)")
-                                        .font(.system(size: 10.5))
-                                        .foregroundColor(.secondary)
                                     
                                     Spacer()
                                     
@@ -446,7 +513,7 @@ public struct NewsView: View {
         Task {
             _ = await mailSyncService.syncGreenEmailsFromMail(into: store, forceFullSync: forceFullSync)
             showSyncAlert = true
-            if selectedArticleID == nil {
+            if selectedCategory != .all && selectedArticleID == nil {
                 selectedArticleID = filteredArticles.first?.id
             }
         }
@@ -458,7 +525,6 @@ public struct NewsView: View {
         
         let comment = NewsComment(
             author: store.currentUser.name,
-            department: store.currentUser.department,
             content: content,
             createdAt: Date(),
             avatarSymbol: store.currentUser.avatarSymbol
@@ -489,4 +555,9 @@ public struct NewsView: View {
         formatter.unitsStyle = .short
         return formatter.localizedString(for: date, relativeTo: Date())
     }
+}
+
+#Preview {
+    NewsView()
+        .environmentObject(WorkbenchStore())
 }

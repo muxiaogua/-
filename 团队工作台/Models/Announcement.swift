@@ -29,6 +29,33 @@ public enum AnnouncementPriority: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+public struct AnnouncementAcknowledgment: Identifiable, Codable, Hashable {
+    public var id: UUID
+    public var memberName: String
+    public var department: String
+    public var acknowledgedAt: Date
+    
+    public init(
+        id: UUID = UUID(),
+        memberName: String,
+        department: String = "",
+        acknowledgedAt: Date = Date()
+    ) {
+        self.id = id
+        self.memberName = memberName
+        self.department = department
+        self.acknowledgedAt = acknowledgedAt
+    }
+    
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        memberName = try container.decode(String.self, forKey: .memberName)
+        department = try container.decodeIfPresent(String.self, forKey: .department) ?? ""
+        acknowledgedAt = try container.decode(Date.self, forKey: .acknowledgedAt)
+    }
+}
+
 public struct Announcement: Identifiable, Codable, Hashable {
     public var id: UUID
     public var title: String
@@ -41,6 +68,7 @@ public struct Announcement: Identifiable, Codable, Hashable {
     public var requiresAcknowledgment: Bool
     public var isAcknowledged: Bool
     public var acknowledgedAt: Date?
+    public var acknowledgments: [AnnouncementAcknowledgment]
     public var tags: [String]
     public var externalLink: String?
     
@@ -49,13 +77,14 @@ public struct Announcement: Identifiable, Codable, Hashable {
         title: String,
         content: String,
         author: String,
-        department: String,
+        department: String = "",
         publishDate: Date = Date(),
         priority: AnnouncementPriority = .normal,
         isPinned: Bool = false,
         requiresAcknowledgment: Bool = false,
         isAcknowledged: Bool = false,
         acknowledgedAt: Date? = nil,
+        acknowledgments: [AnnouncementAcknowledgment] = [],
         tags: [String] = [],
         externalLink: String? = nil
     ) {
@@ -70,7 +99,26 @@ public struct Announcement: Identifiable, Codable, Hashable {
         self.requiresAcknowledgment = requiresAcknowledgment
         self.isAcknowledged = isAcknowledged
         self.acknowledgedAt = acknowledgedAt
+        self.acknowledgments = acknowledgments
         self.tags = tags
         self.externalLink = externalLink
+    }
+    
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        title = try container.decode(String.self, forKey: .title)
+        content = try container.decode(String.self, forKey: .content)
+        author = try container.decode(String.self, forKey: .author)
+        department = try container.decodeIfPresent(String.self, forKey: .department) ?? ""
+        publishDate = try container.decode(Date.self, forKey: .publishDate)
+        priority = try container.decode(AnnouncementPriority.self, forKey: .priority)
+        isPinned = try container.decode(Bool.self, forKey: .isPinned)
+        requiresAcknowledgment = try container.decode(Bool.self, forKey: .requiresAcknowledgment)
+        isAcknowledged = try container.decode(Bool.self, forKey: .isAcknowledged)
+        acknowledgedAt = try container.decodeIfPresent(Date.self, forKey: .acknowledgedAt)
+        acknowledgments = try container.decodeIfPresent([AnnouncementAcknowledgment].self, forKey: .acknowledgments) ?? []
+        tags = try container.decodeIfPresent([String].self, forKey: .tags) ?? []
+        externalLink = try container.decodeIfPresent(String.self, forKey: .externalLink)
     }
 }

@@ -6,14 +6,14 @@
 import Foundation
 
 public enum NewsCategory: String, Codable, CaseIterable, Identifiable {
-    case all = "全部资讯"
+    case all = "全部"
     case greenEmail = "Green Email"
     
     public var id: String { rawValue }
     
     public var iconName: String {
         switch self {
-        case .all: return "newspaper.fill"
+        case .all: return "tray.full.fill"
         case .greenEmail: return "envelope.fill"
         }
     }
@@ -30,7 +30,7 @@ public struct NewsComment: Identifiable, Codable, Hashable {
     public init(
         id: UUID = UUID(),
         author: String,
-        department: String,
+        department: String = "",
         content: String,
         createdAt: Date = Date(),
         avatarSymbol: String = "person.crop.circle.fill"
@@ -41,6 +41,16 @@ public struct NewsComment: Identifiable, Codable, Hashable {
         self.content = content
         self.createdAt = createdAt
         self.avatarSymbol = avatarSymbol
+    }
+    
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        author = try container.decode(String.self, forKey: .author)
+        department = try container.decodeIfPresent(String.self, forKey: .department) ?? ""
+        content = try container.decode(String.self, forKey: .content)
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        avatarSymbol = try container.decodeIfPresent(String.self, forKey: .avatarSymbol) ?? "person.crop.circle.fill"
     }
 }
 

@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import AppKit
 
 public struct DashboardView: View {
     @EnvironmentObject var store: WorkbenchStore
@@ -14,359 +15,444 @@ public struct DashboardView: View {
     
     public var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                // Header Welcome
-                headerSection
+            VStack(alignment: .leading, spacing: 22) {
+                // 1. Top 5 Mini Summary Cards
+                topSummaryCardsRow
                 
-                // Urgent Announcements Banner (If any)
-                if !store.urgentAnnouncements.isEmpty {
-                    urgentBannerSection
-                }
+                // 2. Announcements Section (置顶与最新发布规范)
+                teamAnnouncementsSection
                 
-                // Stats Overview Cards
-                statsGridSection
-                
-                // Pinned & Latest Announcements Preview
-                announcementsSection
-                
-                // Latest News Highlights
-                newsHighlightsSection
+                // 3. Important News & Mails Section (AASP 业务资讯与工程简报)
+                importantNewsSection
             }
             .padding(24)
         }
         .background(Color(NSColor.windowBackgroundColor))
-        .alert("签收成功", isPresented: $showingAcknowledgeSuccessAlert) {
+        .alert("确认已读", isPresented: $showingAcknowledgeSuccessAlert) {
             Button("确定", role: .cancel) { }
         } message: {
-            Text("您已成功签收通知「\(acknowledgedTitle)」，系统已记录您的签收状态。")
+            Text("您已成功确认公告「\(acknowledgedTitle)」为已读。")
         }
     }
     
-    // MARK: - Subviews
+    // MARK: - 1. Top 5 Mini Summary Cards
     
-    private var headerSection: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("团队工作台")
-                    .font(.system(size: 26, weight: .bold))
-                Text("欢迎回来，\(store.currentUser.name) · \(store.currentUser.department)")
-                    .font(.system(size: 14))
-                    .foregroundColor(.secondary)
-            }
-            
-            Spacer()
-            
-            HStack(spacing: 12) {
-                Button(action: {
-                    store.selectedNavigation = .publish
-                }) {
-                    Label("发布内容", systemImage: "plus.circle.fill")
-                        .font(.system(size: 13, weight: .medium))
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.regular)
-            }
-        }
-    }
-    
-    private var urgentBannerSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundColor(.red)
-                    .font(.system(size: 16, weight: .bold))
-                Text("紧急公告待处理 (\(store.urgentAnnouncements.count))")
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundColor(.red)
-                Spacer()
-            }
-            
-            ForEach(store.urgentAnnouncements) { announcement in
-                HStack(alignment: .center, spacing: 14) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(announcement.title)
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.primary)
-                        Text(announcement.content)
-                            .font(.system(size: 12))
-                            .foregroundColor(.secondary)
-                            .lineLimit(2)
-                    }
-                    
-                    Spacer()
-                    
-                    if announcement.requiresAcknowledgment && !announcement.isAcknowledged {
-                        Button("一键签收") {
-                            store.acknowledgeAnnouncement(id: announcement.id)
-                            acknowledgedTitle = announcement.title
-                            showingAcknowledgeSuccessAlert = true
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(.red)
-                        .controlSize(.small)
-                    }
-                }
-                .padding(12)
-                .background(Color.red.opacity(0.08))
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .stroke(Color.red.opacity(0.25), lineWidth: 1)
-                )
-            }
-        }
-        .padding(16)
-        .background(Color(NSColor.controlBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .shadow(color: Color.black.opacity(0.04), radius: 4, x: 0, y: 2)
-    }
-    
-    private var statsGridSection: some View {
+    private var topSummaryCardsRow: some View {
         LazyVGrid(columns: [
+            GridItem(.flexible(), spacing: 14),
             GridItem(.flexible(), spacing: 14),
             GridItem(.flexible(), spacing: 14),
             GridItem(.flexible(), spacing: 14),
             GridItem(.flexible(), spacing: 14)
         ], spacing: 14) {
-            statCard(
-                title: "待签收公告",
-                value: "\(store.unacknowledgedCount)",
-                icon: "bell.badge.fill",
-                color: store.unacknowledgedCount > 0 ? .orange : .green,
-                subtitle: store.unacknowledgedCount > 0 ? "需尽快签收" : "已全部处理",
+            miniStatCard(
+                title: "今日公告",
+                count: "\(store.announcements.count)",
+                badge: "公告",
+                color: Color.orange,
                 action: { store.selectedNavigation = .announcements }
             )
             
-            statCard(
-                title: "置顶公告",
-                value: "\(store.pinnedAnnouncements.count)",
-                icon: "pin.fill",
-                color: .blue,
-                subtitle: "重点团队事宜",
-                action: { store.selectedNavigation = .announcements }
-            )
-            
-            statCard(
-                title: "Green Email",
-                value: "\(store.newsArticles.count)",
-                icon: "envelope.fill",
-                color: .green,
-                subtitle: "重点资讯通报",
+            miniStatCard(
+                title: "今日邮件",
+                count: "\(store.newsArticles.count)",
+                badge: "邮件",
+                color: Color.green,
                 action: { store.selectedNavigation = .news }
             )
             
-            statCard(
+            miniStatCard(
+                title: "今日FAQ",
+                count: "\(store.faqItems.count)",
+                badge: "FAQ",
+                color: Color.blue,
+                action: { store.selectedNavigation = .faq }
+            )
+            
+            miniStatCard(
                 title: "我的收藏",
-                value: "\(store.bookmarkedNews.count)",
-                icon: "bookmark.fill",
-                color: .yellow,
-                subtitle: "精选参考文章",
+                count: "\(store.bookmarkedNews.count)",
+                badge: "精益",
+                color: Color(red: 0.88, green: 0.15, blue: 0.35),
                 action: { store.selectedNavigation = .news }
+            )
+            
+            miniStatCard(
+                title: "今日待领",
+                count: "\(store.unacknowledgedCount)",
+                badge: "待领",
+                color: Color(red: 0.90, green: 0.20, blue: 0.25),
+                action: { store.selectedNavigation = .announcements }
             )
         }
     }
     
-    private func statCard(title: String, value: String, icon: String, color: Color, subtitle: String, action: @escaping () -> Void) -> some View {
+    private func miniStatCard(
+        title: String,
+        count: String,
+        badge: String,
+        color: Color,
+        action: @escaping () -> Void
+    ) -> some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Image(systemName: icon)
-                        .font(.system(size: 16))
-                        .foregroundColor(color)
-                        .padding(8)
-                        .background(color.opacity(0.12))
-                        .clipShape(Circle())
+                    Text(title)
+                        .font(.system(size: 11.5, weight: .medium))
+                        .foregroundColor(.secondary)
+                    
                     Spacer()
-                    Text(value)
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
-                        .foregroundColor(.primary)
+                    
+                    Text(badge)
+                        .font(.system(size: 10, weight: .semibold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(color.opacity(0.12))
+                        .foregroundColor(color)
+                        .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
                 }
                 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.primary)
-                    Text(subtitle)
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                }
+                Text(count)
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .foregroundColor(color)
             }
             .padding(14)
             .background(Color(NSColor.controlBackgroundColor))
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .stroke(Color.secondary.opacity(0.1), lineWidth: 1)
+                    .stroke(Color.secondary.opacity(0.12), lineWidth: 1)
             )
         }
         .buttonStyle(.plain)
     }
     
-    private var announcementsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Label("团队公告速览", systemImage: "megaphone.fill")
-                    .font(.system(size: 16, weight: .bold))
-                Spacer()
-                if !store.announcements.isEmpty {
-                    Button("查看全部 (\(store.announcements.count))") {
-                        store.selectedNavigation = .announcements
-                    }
+    // MARK: - 2. Announcements Section
+    
+    private var teamAnnouncementsSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            // Section Header
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(Color.orange)
+                    .frame(width: 8, height: 8)
+                
+                Text("团队公告")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundColor(.primary)
+                
+                Text("(置顶与最新发布规范)")
                     .font(.system(size: 12))
-                    .buttonStyle(.link)
+                    .foregroundColor(.secondary)
+                
+                Spacer()
+                
+                Button(action: {
+                    store.selectedNavigation = .announcements
+                }) {
+                    HStack(spacing: 4) {
+                        Text("进入公告板")
+                            .font(.system(size: 12, weight: .medium))
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 10, weight: .bold))
+                    }
+                    .foregroundColor(.accentColor)
                 }
+                .buttonStyle(.plain)
             }
             
+            // 3-Column Announcements Cards Grid
             if store.announcements.isEmpty {
                 HStack {
                     Spacer()
                     VStack(spacing: 8) {
                         Image(systemName: "megaphone")
-                            .font(.system(size: 28))
-                            .foregroundColor(.secondary.opacity(0.5))
+                            .font(.system(size: 30))
+                            .foregroundColor(.secondary.opacity(0.4))
                         Text("暂无团队公告")
-                            .font(.system(size: 13, weight: .medium))
+                            .font(.system(size: 13))
                             .foregroundColor(.secondary)
-                        Button("去发布第一条公告") {
-                            store.selectedNavigation = .publish
-                        }
-                        .font(.system(size: 12))
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
                     }
-                    .padding(24)
+                    .padding(32)
                     Spacer()
                 }
                 .background(Color(NSColor.controlBackgroundColor))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
             } else {
-                VStack(spacing: 8) {
-                    ForEach(store.announcements.prefix(3)) { item in
-                        HStack(spacing: 12) {
-                            PriorityBadge(priority: item.priority)
-                            
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(item.title)
-                                    .font(.system(size: 13, weight: .medium))
-                                    .foregroundColor(.primary)
-                                    .lineLimit(1)
-                                Text("\(item.author) · \(item.department) · \(formatDate(item.publishDate))")
-                                    .font(.system(size: 11))
-                                    .foregroundColor(.secondary)
-                            }
-                            
-                            Spacer()
-                            
-                            if item.requiresAcknowledgment {
-                                if item.isAcknowledged {
-                                    Label("已签收", systemImage: "checkmark.circle.fill")
-                                        .font(.system(size: 11))
-                                        .foregroundColor(.green)
-                                } else {
-                                    Button("签收") {
-                                        store.acknowledgeAnnouncement(id: item.id)
-                                        acknowledgedTitle = item.title
-                                        showingAcknowledgeSuccessAlert = true
-                                    }
-                                    .controlSize(.small)
-                                }
-                            }
-                        }
-                        .padding(12)
-                        .background(Color(NSColor.controlBackgroundColor))
-                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                LazyVGrid(columns: [
+                    GridItem(.flexible(), spacing: 14),
+                    GridItem(.flexible(), spacing: 14),
+                    GridItem(.flexible(), spacing: 14)
+                ], spacing: 14) {
+                    ForEach(store.announcements.prefix(6)) { item in
+                        announcementCard(for: item)
                     }
                 }
             }
         }
     }
     
-    private var newsHighlightsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Label("Green Email 重点资讯", systemImage: "envelope.fill")
-                    .font(.system(size: 16, weight: .bold))
-                Spacer()
-                if !store.newsArticles.isEmpty {
-                    Button("进入资讯中心") {
-                        store.selectedNavigation = .news
-                    }
-                    .font(.system(size: 12))
-                    .buttonStyle(.link)
+    private func announcementCard(for item: Announcement) -> some View {
+        let isUrgent = item.priority == .urgent || item.isPinned
+        let isAcked = item.isAcknowledged || item.acknowledgments.contains(where: { $0.memberName == store.currentUser.name })
+        
+        return VStack(alignment: .leading, spacing: 10) {
+            // Top Row (Badges & Date)
+            HStack(spacing: 6) {
+                if item.isPinned {
+                    Text("置顶")
+                        .font(.system(size: 10, weight: .bold))
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background(Color.red)
+                        .foregroundColor(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 3))
                 }
+                
+                if let firstTag = item.tags.first, !firstTag.isEmpty {
+                    Text(firstTag)
+                        .font(.system(size: 10, weight: .medium))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.secondary.opacity(0.1))
+                        .foregroundColor(.secondary)
+                        .clipShape(RoundedRectangle(cornerRadius: 3))
+                } else {
+                    Text(item.priority == .urgent ? "紧急" : "常规")
+                        .font(.system(size: 10, weight: .medium))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.secondary.opacity(0.1))
+                        .foregroundColor(.secondary)
+                        .clipShape(RoundedRectangle(cornerRadius: 3))
+                }
+                
+                Spacer()
+                
+                Text(formatShortDate(item.publishDate))
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
             }
             
+            // Title
+            Text(item.title)
+                .font(.system(size: 13.5, weight: .bold))
+                .foregroundColor(isUrgent ? Color.red : Color.primary)
+                .lineLimit(2)
+            
+            // Content Summary
+            Text(item.content)
+                .font(.system(size: 12))
+                .foregroundColor(isUrgent ? Color.red.opacity(0.85) : Color.secondary)
+                .lineLimit(3)
+                .lineSpacing(2)
+            
+            Spacer(minLength: 4)
+            
+            // Bottom Row (Publisher & Read Button)
+            HStack(alignment: .center) {
+                Text("发布: \(item.author)")
+                    .font(.system(size: 11))
+                    .foregroundColor(isUrgent ? Color.red.opacity(0.8) : Color.secondary)
+                
+                Spacer()
+                
+                if item.requiresAcknowledgment {
+                    if isAcked {
+                        HStack(spacing: 3) {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 9, weight: .bold))
+                            Text("已读")
+                                .font(.system(size: 11, weight: .medium))
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Color.green.opacity(0.1))
+                        .foregroundColor(.green)
+                        .clipShape(RoundedRectangle(cornerRadius: 5))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 5)
+                                .stroke(Color.green.opacity(0.3), lineWidth: 1)
+                        )
+                    } else {
+                        Button(action: {
+                            store.acknowledgeAnnouncement(id: item.id)
+                            acknowledgedTitle = item.title
+                            showingAcknowledgeSuccessAlert = true
+                        }) {
+                            Text("标记已读")
+                                .font(.system(size: 11, weight: .semibold))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3.5)
+                                .background(Color.orange)
+                                .foregroundColor(.white)
+                                .clipShape(RoundedRectangle(cornerRadius: 5))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+        .padding(14)
+        .frame(minHeight: 145)
+        .background(isUrgent ? Color.red.opacity(0.04) : Color(NSColor.controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(isUrgent ? Color.red.opacity(0.25) : Color.secondary.opacity(0.12), lineWidth: 1)
+        )
+    }
+    
+    // MARK: - 3. Important News & Mails Section
+    
+    private var importantNewsSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            // Section Header
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(Color.green)
+                    .frame(width: 8, height: 8)
+                
+                Text("重要邮件与资讯")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundColor(.primary)
+                
+                Text("(AASP 业务资讯与工程简报)")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+                
+                Spacer()
+                
+                Button(action: {
+                    store.selectedNavigation = .news
+                }) {
+                    HStack(spacing: 4) {
+                        Text("查看全部资讯")
+                            .font(.system(size: 12, weight: .medium))
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 10, weight: .bold))
+                    }
+                    .foregroundColor(.accentColor)
+                }
+                .buttonStyle(.plain)
+            }
+            
+            // 3-Column News Cards Grid
             if store.newsArticles.isEmpty {
                 HStack {
                     Spacer()
                     VStack(spacing: 8) {
-                        Image(systemName: "envelope.badge")
-                            .font(.system(size: 28))
-                            .foregroundColor(.secondary.opacity(0.5))
-                        Text("暂无 Green Email 重点资讯")
-                            .font(.system(size: 13, weight: .medium))
+                        Image(systemName: "envelope.open")
+                            .font(.system(size: 30))
+                            .foregroundColor(.secondary.opacity(0.4))
+                        Text("暂无重要邮件与资讯")
+                            .font(.system(size: 13))
                             .foregroundColor(.secondary)
-                        Button("去发布 Green Email") {
-                            store.selectedNavigation = .publish
-                        }
-                        .font(.system(size: 12))
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
                     }
-                    .padding(24)
+                    .padding(32)
                     Spacer()
                 }
                 .background(Color(NSColor.controlBackgroundColor))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
             } else {
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                    ForEach(store.latestNews.prefix(4)) { article in
-                        VStack(alignment: .leading, spacing: 10) {
-                            HStack {
-                                CategoryTag(category: article.category)
-                                Spacer()
-                                Text("\(article.estimatedReadMinutes) 分钟阅读")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(.secondary)
-                            }
-                            
-                            Text(article.title)
-                                .font(.system(size: 14, weight: .semibold))
-                                .lineLimit(2)
-                                .foregroundColor(.primary)
-                            
-                            HStack {
-                                Text("\(article.author) · \(article.source)")
-                                    .font(.system(size: 11))
-                                    .foregroundColor(.secondary)
-                                    .lineLimit(1)
-                                Spacer()
-                                Button(action: {
-                                    store.toggleBookmark(id: article.id)
-                                }) {
-                                    Image(systemName: article.isBookmarked ? "bookmark.fill" : "bookmark")
-                                        .foregroundColor(article.isBookmarked ? .yellow : .secondary)
-                                        .font(.system(size: 12))
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                        .padding(14)
-                        .background(Color(NSColor.controlBackgroundColor))
-                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .stroke(Color.secondary.opacity(0.1), lineWidth: 1)
-                        )
+                LazyVGrid(columns: [
+                    GridItem(.flexible(), spacing: 14),
+                    GridItem(.flexible(), spacing: 14),
+                    GridItem(.flexible(), spacing: 14)
+                ], spacing: 14) {
+                    ForEach(store.newsArticles.prefix(6)) { article in
+                        newsCard(for: article)
                     }
                 }
             }
         }
     }
     
-    private func formatDate(_ date: Date) -> String {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .short
-        return formatter.localizedString(for: date, relativeTo: Date())
+    private func newsCard(for article: NewsArticle) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            // Top Row (Badge & Date)
+            HStack {
+                Text(article.category.rawValue)
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 2.5)
+                    .background(Color.blue.opacity(0.1))
+                    .foregroundColor(.blue)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                
+                Spacer()
+                
+                Text(formatFullDateOnly(article.publishDate))
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+            
+            // Title
+            Text(article.title)
+                .font(.system(size: 13.5, weight: .bold))
+                .foregroundColor(.primary)
+                .lineLimit(2)
+            
+            // Sender / Author
+            Text("发件: \(article.source.isEmpty ? article.author : article.source)")
+                .font(.system(size: 11))
+                .foregroundColor(.secondary)
+                .lineLimit(1)
+            
+            // Content Snippet Box
+            Text(article.content.trimmingCharacters(in: .whitespacesAndNewlines))
+                .font(.system(size: 12))
+                .foregroundColor(.primary.opacity(0.85))
+                .lineLimit(3)
+                .lineSpacing(2)
+                .padding(10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.secondary.opacity(0.04))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+            
+            Spacer(minLength: 4)
+            
+            // Bottom Action Link
+            Button(action: {
+                store.selectedNewsArticleID = article.id
+                store.selectedNavigation = .news
+            }) {
+                HStack(spacing: 4) {
+                    Text("点击查看全文")
+                        .font(.system(size: 11.5, weight: .medium))
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 9.5, weight: .bold))
+                }
+                .foregroundColor(.accentColor)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(14)
+        .frame(minHeight: 185)
+        .background(Color(NSColor.controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(Color.secondary.opacity(0.12), lineWidth: 1)
+        )
     }
+    
+    // MARK: - Date Formatters
+    
+    private func formatShortDate(_ date: Date) -> String {
+        let df = DateFormatter()
+        df.dateFormat = "MM-dd HH:mm"
+        return df.string(from: date)
+    }
+    
+    private func formatFullDateOnly(_ date: Date) -> String {
+        let df = DateFormatter()
+        df.dateFormat = "yyyy-MM-dd"
+        return df.string(from: date)
+    }
+}
+
+#Preview {
+    DashboardView()
+        .environmentObject(WorkbenchStore())
 }
