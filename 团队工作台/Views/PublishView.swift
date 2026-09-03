@@ -8,15 +8,6 @@ import SwiftUI
 public struct PublishView: View {
     @EnvironmentObject var store: WorkbenchStore
     
-    enum PublishType: String, CaseIterable, Identifiable {
-        case announcement = "团队公告"
-        case news = "Green Email"
-        
-        var id: String { rawValue }
-    }
-    
-    @State private var selectedType: PublishType = .announcement
-    
     // Announcement Form States
     @State private var announcementTitle: String = ""
     @State private var announcementContent: String = ""
@@ -26,17 +17,6 @@ public struct PublishView: View {
     @State private var announcementTags: String = "产研协同, 版本通知"
     @State private var announcementExternalLink: String = ""
     @State private var sendAnnouncementNotification: Bool = true
-    
-    // News Form States
-    @State private var newsTitle: String = ""
-    @State private var newsSummary: String = ""
-    @State private var newsContent: String = ""
-    @State private var newsCategory: NewsCategory = .greenEmail
-    @State private var newsSource: String = "Green Email 团队专栏"
-    @State private var newsTags: String = "重点资讯, 团队对齐"
-    @State private var newsEstimatedMinutes: Int = 3
-    @State private var newsExternalLink: String = ""
-    @State private var sendNewsNotification: Bool = true
     
     // Feedback
     @State private var showSuccessAlert = false
@@ -48,31 +28,17 @@ public struct PublishView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 // Header
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("发布中心")
-                            .font(.system(size: 24, weight: .bold))
-                        Text("起草并向团队全员分发重点公告或 Green Email 资讯")
-                            .font(.system(size: 13))
-                            .foregroundColor(.secondary)
-                    }
-                    Spacer()
-                    Picker("发布类型", selection: $selectedType) {
-                        ForEach(PublishType.allCases) { type in
-                            Text(type.rawValue).tag(type)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .frame(width: 240)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("发布团队公告")
+                        .font(.system(size: 24, weight: .bold))
+                    Text("起草并向团队全员分发重点公告，支持阅读确认追踪与全员 iCloud 实时协同")
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
                 }
                 
                 Divider()
                 
-                if selectedType == .announcement {
-                    announcementForm
-                } else {
-                    newsForm
-                }
+                announcementForm
             }
             .padding(28)
         }
@@ -133,7 +99,7 @@ public struct PublishView: View {
                     .font(.system(size: 13, weight: .semibold))
                 TextEditor(text: $announcementContent)
                     .font(.system(size: 13))
-                    .frame(minHeight: 140)
+                    .frame(minHeight: 160)
                     .padding(6)
                     .background(Color(NSColor.controlBackgroundColor))
                     .clipShape(RoundedRectangle(cornerRadius: 6))
@@ -172,101 +138,6 @@ public struct PublishView: View {
         }
     }
     
-    // MARK: - News Form
-    
-    private var newsForm: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Group {
-                Text("Green Email 标题")
-                    .font(.system(size: 13, weight: .semibold))
-                TextField("请输入 Green Email 标题", text: $newsTitle)
-                    .textFieldStyle(.roundedBorder)
-            }
-            
-            HStack(spacing: 24) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("资讯分类")
-                        .font(.system(size: 13, weight: .semibold))
-                    HStack {
-                        Image(systemName: "envelope.fill")
-                            .foregroundColor(.green)
-                        Text("Green Email")
-                            .font(.system(size: 13, weight: .medium))
-                    }
-                    .padding(.top, 4)
-                }
-                
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("信息来源 / 专栏")
-                        .font(.system(size: 13, weight: .semibold))
-                    TextField("来源出处", text: $newsSource)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 180)
-                }
-                
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("预估阅读时长 (分钟)")
-                        .font(.system(size: 13, weight: .semibold))
-                    Stepper("\(newsEstimatedMinutes) 分钟", value: $newsEstimatedMinutes, in: 1...30)
-                }
-            }
-            
-            Toggle("发布后发送系统本地横幅通知", isOn: $sendNewsNotification)
-                .toggleStyle(.checkbox)
-                .font(.system(size: 12))
-            
-            Group {
-                Text("文章核心摘要 (用于列表速览与消息推送)")
-                    .font(.system(size: 13, weight: .semibold))
-                TextField("简明一两句话概括要点...", text: $newsSummary)
-                    .textFieldStyle(.roundedBorder)
-            }
-            
-            Group {
-                Text("Green Email 正文 (支持 Markdown 排版)")
-                    .font(.system(size: 13, weight: .semibold))
-                TextEditor(text: $newsContent)
-                    .font(.system(size: 13))
-                    .frame(minHeight: 180)
-                    .padding(6)
-                    .background(Color(NSColor.controlBackgroundColor))
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
-                    )
-            }
-            
-            Group {
-                Text("标签关键词 (逗号分隔)")
-                    .font(.system(size: 13, weight: .semibold))
-                TextField("如：重点对齐, 业务通报", text: $newsTags)
-                    .textFieldStyle(.roundedBorder)
-            }
-            
-            Group {
-                Text("原文外链 (可选)")
-                    .font(.system(size: 13, weight: .semibold))
-                TextField("https://...", text: $newsExternalLink)
-                    .textFieldStyle(.roundedBorder)
-            }
-            
-            HStack {
-                Spacer()
-                Button(action: submitNews) {
-                    Label("立即发布 Green Email", systemImage: "paperplane.fill")
-                        .font(.system(size: 13, weight: .semibold))
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 4)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.green)
-                .disabled(newsTitle.trimmingCharacters(in: .whitespaces).isEmpty || newsContent.trimmingCharacters(in: .whitespaces).isEmpty)
-            }
-            .padding(.top, 10)
-        }
-    }
-    
     // MARK: - Actions
     
     private func submitAnnouncement() {
@@ -293,34 +164,9 @@ public struct PublishView: View {
         announcementContent = ""
         announcementExternalLink = ""
     }
-    
-    private func submitNews() {
-        let tags = newsTags.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
-        let summary = newsSummary.isEmpty ? String(newsContent.prefix(80)) + "..." : newsSummary
-        let newArticle = NewsArticle(
-            title: newsTitle.trimmingCharacters(in: .whitespaces),
-            summary: summary,
-            content: newsContent.trimmingCharacters(in: .whitespaces),
-            author: store.currentUser.name,
-            source: newsSource,
-            publishDate: Date(),
-            category: .greenEmail,
-            tags: tags,
-            isBookmarked: false,
-            readCount: 0,
-            estimatedReadMinutes: newsEstimatedMinutes,
-            originalURL: newsExternalLink.isEmpty ? nil : newsExternalLink,
-            comments: []
-        )
-        
-        store.addNewsArticle(newArticle, notify: sendNewsNotification)
-        alertMessage = "Green Email「\(newArticle.title)」已成功发布！"
-        showSuccessAlert = true
-        
-        // Reset
-        newsTitle = ""
-        newsSummary = ""
-        newsContent = ""
-        newsExternalLink = ""
-    }
+}
+
+#Preview {
+    PublishView()
+        .environmentObject(WorkbenchStore())
 }

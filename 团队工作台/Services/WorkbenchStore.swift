@@ -20,12 +20,18 @@ public class WorkbenchStore: ObservableObject {
     @Published public var selectedAnnouncementID: UUID?
     @Published public var targetFAQItemID: UUID?
     @Published public var targetFAQCategory: String?
+    @Published public var readNewsArticleIDs: Set<UUID> = []
+    @Published public var readAnnouncementIDs: Set<UUID> = []
+    @Published public var permissionConfig: TeamPermissionConfig = TeamPermissionConfig()
     
     private let announcementsStorageKey = "workbench_announcements_v3"
     private let newsStorageKey = "workbench_news_v3"
     private let faqStorageKey = "workbench_faq_v3"
     private let currentUserStorageKey = "workbench_current_user_v3"
     private let teamMembersStorageKey = "workbench_team_members_v3"
+    private let readNewsStorageKey = "workbench_read_news_ids_v1"
+    private let readAnnouncementsStorageKey = "workbench_read_announcements_ids_v1"
+    private let permissionsStorageKey = "workbench_permissions_v1"
     
     public init() {
         loadData()
@@ -72,6 +78,48 @@ public class WorkbenchStore: ObservableObject {
         announcements.filter { $0.requiresAcknowledgment && !$0.isAcknowledged }.count
     }
     
+    public var todayUnacknowledgedCount: Int {
+        announcements.filter { item in
+            Calendar.current.isDateInToday(item.publishDate) &&
+            item.requiresAcknowledgment &&
+            !item.isAcknowledged &&
+            !item.acknowledgments.contains(where: { $0.memberName == currentUser.name })
+        }.count
+    }
+    
+    public var unreadAnnouncementsCount: Int {
+        announcements.filter { item in
+            let isAcked = item.isAcknowledged || item.acknowledgments.contains(where: { $0.memberName == currentUser.name })
+            if item.requiresAcknowledgment {
+                return !isAcked
+            } else {
+                return !readAnnouncementIDs.contains(item.id)
+            }
+        }.count
+    }
+    
+    public var todayUnreadAnnouncementsCount: Int {
+        announcements.filter { item in
+            guard Calendar.current.isDateInToday(item.publishDate) else { return false }
+            let isAcked = item.isAcknowledged || item.acknowledgments.contains(where: { $0.memberName == currentUser.name })
+            if item.requiresAcknowledgment {
+                return !isAcked
+            } else {
+                return !readAnnouncementIDs.contains(item.id)
+            }
+        }.count
+    }
+    
+    public var unreadNewsCount: Int {
+        newsArticles.filter { !readNewsArticleIDs.contains($0.id) }.count
+    }
+    
+    public var todayUnreadNewsCount: Int {
+        newsArticles.filter { article in
+            Calendar.current.isDateInToday(article.publishDate) && !readNewsArticleIDs.contains(article.id)
+        }.count
+    }
+    
     public var totalAnnouncementsCount: Int {
         announcements.count
     }
@@ -82,6 +130,105 @@ public class WorkbenchStore: ObservableObject {
     
     public var latestNews: [NewsArticle] {
         Array(newsArticles.sorted { $0.publishDate > $1.publishDate }.prefix(5))
+    }
+    
+    // MARK: - Permissions & Role Management (RBAC)
+    
+    public func permission(for memberName: String) -> MemberPermission {
+        let name = memberName.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Default Super Admins (Jason and Beauty always have full permissions)
+        if permissionConfig.defaultAdmins.contains(name) {
+            return MemberPermission(
+                memberName: name,
+                isAdmin: true,
+                canPublishAnnouncements: true,
+                canSyncData: true,
+                updatedAt: Date()
+            )
+        }
+        
+        if let custom = permissionConfig.permissions[name] {
+            return custom
+        }
+        
+        // Default regular member
+        return MemberPermission(
+            memberName: name,
+            isAdmin: false,
+            canPublishAnnouncements: false,
+            canSyncData: false,
+            updatedAt: Date()
+        )
+    }
+    
+    public var isCurrentUserAdmin: Bool {
+        permission(for: currentUser.name).isAdmin
+    }
+    
+    public var canCurrentUserPublishAnnouncements: Bool {
+        let perm = permission(for: currentUser.name)
+        return perm.isAdmin || perm.canPublishAnnouncements
+    }
+    
+    public var canCurrentUserSyncData: Bool {
+        let perm = permission(for: currentUser.name)
+        return perm.isAdmin || perm.canSyncData
+    }
+    
+    public func updatePermission(
+        for memberName: String,
+        isAdmin: Bool,
+        canPublishAnnouncements: Bool,
+        canSyncData: Bool
+    ) {
+        let name = memberName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return }
+        
+        let newPerm = MemberPermission(
+            memberName: name,
+            isAdmin: isAdmin,
+            canPublishAnnouncements: canPublishAnnouncements || isAdmin,
+            canSyncData: canSyncData || isAdmin,
+            updatedAt: Date()
+        )
+        
+        permissionConfig.permissions[name] = newPerm
+        permissionConfig.lastModifiedAt = Date()
+        saveData()
+    }
+    
+    // MARK: - Actions: Read Status Tracking
+    
+    public func markNewsArticleAsRead(id: UUID) {
+        if !readNewsArticleIDs.contains(id) {
+            readNewsArticleIDs.insert(id)
+            let array = readNewsArticleIDs.map { $0.uuidString }
+            UserDefaults.standard.set(array, forKey: readNewsStorageKey)
+        }
+    }
+    
+    public func markAllNewsArticlesAsRead() {
+        for article in newsArticles {
+            readNewsArticleIDs.insert(article.id)
+        }
+        let array = readNewsArticleIDs.map { $0.uuidString }
+        UserDefaults.standard.set(array, forKey: readNewsStorageKey)
+    }
+    
+    public func markAnnouncementAsRead(id: UUID) {
+        if !readAnnouncementIDs.contains(id) {
+            readAnnouncementIDs.insert(id)
+            let array = readAnnouncementIDs.map { $0.uuidString }
+            UserDefaults.standard.set(array, forKey: readAnnouncementsStorageKey)
+        }
+    }
+    
+    public func markAllAnnouncementsAsRead() {
+        for item in announcements {
+            readAnnouncementIDs.insert(item.id)
+        }
+        let array = readAnnouncementIDs.map { $0.uuidString }
+        UserDefaults.standard.set(array, forKey: readAnnouncementsStorageKey)
     }
     
     // MARK: - Actions: Announcements
@@ -419,9 +566,13 @@ public class WorkbenchStore: ObservableObject {
         announcements.removeAll()
         newsArticles.removeAll()
         faqItems.removeAll()
+        readNewsArticleIDs.removeAll()
+        readAnnouncementIDs.removeAll()
         UserDefaults.standard.removeObject(forKey: announcementsStorageKey)
         UserDefaults.standard.removeObject(forKey: newsStorageKey)
         UserDefaults.standard.removeObject(forKey: faqStorageKey)
+        UserDefaults.standard.removeObject(forKey: readNewsStorageKey)
+        UserDefaults.standard.removeObject(forKey: readAnnouncementsStorageKey)
         UserDefaults.standard.removeObject(forKey: "workbench_announcements_v1")
         UserDefaults.standard.removeObject(forKey: "workbench_news_v1")
         saveData()
@@ -445,6 +596,9 @@ public class WorkbenchStore: ObservableObject {
         }
         if let encodedMembers = try? JSONEncoder().encode(teamMembers) {
             UserDefaults.standard.set(encodedMembers, forKey: teamMembersStorageKey)
+        }
+        if let encodedPerms = try? JSONEncoder().encode(permissionConfig) {
+            UserDefaults.standard.set(encodedPerms, forKey: permissionsStorageKey)
         }
         
         // 2. If connected to iCloud shared folder, write to shared storage
@@ -488,6 +642,13 @@ public class WorkbenchStore: ObservableObject {
         let memberURL = rosterDir.appendingPathComponent("member_\(currentUser.name).json")
         if let data = try? encoder.encode(currentUser) {
             try? data.write(to: memberURL)
+        }
+        
+        // Write permissions config
+        let permDir = baseURL.appendingPathComponent("permissions", isDirectory: true)
+        let permURL = permDir.appendingPathComponent("permissions.json")
+        if let data = try? encoder.encode(permissionConfig) {
+            try? data.write(to: permURL)
         }
     }
     
@@ -583,6 +744,17 @@ public class WorkbenchStore: ObservableObject {
             self.newsArticles = mergedNews.sorted { $0.publishDate > $1.publishDate }
         }
         
+        // Read News sync metadata from cloud shared folder
+        let newsMetaURL = baseURL.appendingPathComponent("news/sync_meta.json")
+        if let data = try? Data(contentsOf: newsMetaURL),
+           let meta = try? decoder.decode(SyncMetaRecord.self, from: data) {
+            MailSyncService.shared.lastSyncTime = meta.lastSyncTime
+        } else if let latestMailDate = loadedNews.map(\.publishDate).max() {
+            if MailSyncService.shared.lastSyncTime == nil || (MailSyncService.shared.lastSyncTime ?? Date.distantPast) < latestMailDate {
+                MailSyncService.shared.lastSyncTime = latestMailDate
+            }
+        }
+        
         // 4. Read Comments
         let commentsDir = baseURL.appendingPathComponent("comments", isDirectory: true)
         if let files = try? fileManager.contentsOfDirectory(at: commentsDir, includingPropertiesForKeys: nil) {
@@ -617,6 +789,17 @@ public class WorkbenchStore: ObservableObject {
             self.faqItems = loadedFAQs.sorted { $0.updatedAt > $1.updatedAt }
         } else {
             self.faqItems.removeAll { Self.presetFAQQuestionsBlocklist.contains($0.question) }
+        }
+        
+        // Read FAQ sync metadata from cloud shared folder
+        let faqMetaURL = baseURL.appendingPathComponent("faq/sync_meta.json")
+        if let data = try? Data(contentsOf: faqMetaURL),
+           let meta = try? decoder.decode(SyncMetaRecord.self, from: data) {
+            ChorusFAQSyncService.shared.lastSyncTime = meta.lastSyncTime
+        } else if let latestFAQDate = loadedFAQs.map(\.updatedAt).max() {
+            if ChorusFAQSyncService.shared.lastSyncTime == nil || (ChorusFAQSyncService.shared.lastSyncTime ?? Date.distantPast) < latestFAQDate {
+                ChorusFAQSyncService.shared.lastSyncTime = latestFAQDate
+            }
         }
         
         // 6. Read Roster (All discovered active team members)
@@ -700,6 +883,12 @@ public class WorkbenchStore: ObservableObject {
             self.currentUser = TeamMember.currentUser
         }
         
+        let readNewsData = UserDefaults.standard.stringArray(forKey: readNewsStorageKey) ?? []
+        self.readNewsArticleIDs = Set(readNewsData.compactMap { UUID(uuidString: $0) })
+        
+        let readAnnData = UserDefaults.standard.stringArray(forKey: readAnnouncementsStorageKey) ?? []
+        self.readAnnouncementIDs = Set(readAnnData.compactMap { UUID(uuidString: $0) })
+        
         let membersData = UserDefaults.standard.data(forKey: teamMembersStorageKey)
         if let data = membersData, let decodedMembers = try? JSONDecoder().decode([TeamMember].self, from: data) {
             self.teamMembers = decodedMembers.filter { !Self.mockNamesBlocklist.contains($0.name) }
@@ -754,8 +943,17 @@ public class WorkbenchStore: ObservableObject {
             self.faqItems = []
         }
         
-        // Ensure all pre-compiled Chorus Knowledge Base items are present (e.g. RCC / ARS / BTS / AA / SDA)
         var hasNewItems = false
+        
+        // Normalize legacy category names if any
+        for i in 0..<self.faqItems.count {
+            if self.faqItems[i].category == "ARS OB 常规咨询" {
+                self.faqItems[i].category = "ARS OB"
+                hasNewItems = true
+            }
+        }
+        
+        // Ensure all pre-compiled Chorus Knowledge Base items are present (e.g. RCC / ARS OB / AASP OB / BTS / AA / SDA / Apple TV)
         for entry in ChorusFAQSyncService.allEntries {
             let q = entry.question.trimmingCharacters(in: .whitespacesAndNewlines)
             if !self.faqItems.contains(where: { $0.question == q }) {
@@ -801,9 +999,9 @@ public class WorkbenchStore: ObservableObject {
 
 public enum AppNavigationItem: String, CaseIterable, Identifiable {
     case dashboard = "首页概览"
-    case announcements = "团队公告板"
-    case news = "重要邮件与资讯"
-    case faq = "常见知识FAQ"
+    case announcements = "团队公告"
+    case news = "重要邮件"
+    case faq = "FAQ查询"
     case publish = "发布中心"
     case settings = "偏好设置"
     

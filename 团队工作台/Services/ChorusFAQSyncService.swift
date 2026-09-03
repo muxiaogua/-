@@ -489,406 +489,406 @@ public class ChorusFAQSyncService: NSObject, ObservableObject {
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "客户常规咨询 ARS",
             question: "常规问题的维修时间和维修方案预期，比如更换屏幕、更换电池是否需要返厂？部件供货 (库存) 情况？是否需要返场？若店内维修大约需要多久？",
             answer: "客户针对维修方案的讨论，建议都是在客户完成实际店内的诊断后，进行维修服务的同事会根据诊断的结果，提供最终的方案和维修时长的预期。无需致电零售店。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "客户常规咨询 ARS",
             question: "维修期间是否可以提供备用机？有什么条件？",
             answer: "符合三包或保修范围内的出现的故障并且需要返厂，会提供备用机，具体是否符合需要在门店诊断完成确认。\n返厂维修直接寄给客户的情况，无法提供备用机。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "客户常规咨询 ARS",
             question: "异地服务：外国设备能否维修，以及外国购买的 AC+ 能否使用？",
             answer: "根据当地法律法规和功能范围，需要在店内运行诊断和检测后，才能确认，若能维修，才可以使用 AC+ 服务。具体以店内检测为准。无需致电零售店咨询。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "客户常规咨询 ARS",
             question: "客户想要提前确认无购买凭证是否能够维修？",
             answer: "门店会根据现场检测情况来确定，无法提前确认，无需致电零售店。（请勿完全拒绝客户）\n\n零售店会尝试先帮助客户返厂，但是有可能后续会要求补充发票。（此预期零售店也会告知客户）"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "客户常规咨询 ARS",
             question: "零售店能否接受客户补开的发票？",
             answer: "可以指引客户先前往店内确认是否需要补开发票。（请勿设置过高预期）"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "客户常规咨询 ARS",
             question: "零售店协助客户成功订购部件后，若客户无法按约定时间前往维修，应如何向客户设置预期？",
             answer: "若需要维修的设备在客户手中，在部件到达且零售店联系客户后 (邮件或短信)，客户有五个工作日的时间前往维修。如果客户无法在五天内前往，零售店会在重新分配之前通知客户。\n如果客户确定会错过截止日期，请向客户说明，当客户有空时，零售店可以再次帮助他们重新订购，不要因此致电零售店。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "客户常规咨询 ARS",
             question: "在线预约没有合适的时间，客户咨询现场排队情况，提供怎样的预期会比较合适？",
             answer: "可以优先指引客户前往 ASP 处理，若客户坚持前往零售店排队，请告知预期：预约前往会比较有保障，如果没有预约直接前往，我们店内的同事也会根据当天的情况尽力帮你解决问题，但等待时间有可能较长，具体情况需要到店之后和店内的同事再确认。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "客户常规咨询 ARS",
             question: "客户表示已经自行预约 Genius Bar 维修，但是没有收到确认信息或邮件时如何处理？",
             answer: "在 Core 中协助确认，若依然没有则协助客户重新预约即可。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "客户常规咨询 ARS",
             question: "Apple Online Store 订单线下取货规则：能否更换取货人？未携带身份证能否有替代验证方案？客户未按照约定时间取货，零售店会保留几天？",
             answer: "理论上不可以更换取货人，若客户遇到特殊情况，并且有原取货人和现取货人的双方有效证件，可以尝试在店内沟通。（请勿提供确定的预期）\n未携带身份证时，可以提供其他有效证件时，可以尝试在店内沟通。（请勿提供确定的预期）\n保留时间范围无法确认，详情参考： Apple 取货政策。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "客户常规咨询 ARS",
             question: "新品发售期间，零售店何时可以直接到店购买新品，是否只能到店咨询？",
             answer: "可以指引客户联系 RCC。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "客户常规咨询 ARS",
             question: "咨询新产品店内何时有展示机？",
             answer: "店内样品一般在可售卖当日在店内展示，但是每家零售店的到货时间不一，请建议客户以到店情况为准。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "客户常规咨询 ARS",
             question: "新品正式发售当日，能否直接前往 ARS 现场购买？",
             answer: "建议客户使用 APU: Apple Store pickup (到店取货) 的方式进行购买。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "客户常规咨询 ARS",
             question: "维修完成后，若客户无法按照约定取回设备，ARS 通常会如何处理？我们应如何建议客户？",
             answer: "建议客户尽可能在 60 天内 前往 ARS 取回设备， 无需预约，无需致电 ARS。\n如果客户在中国大陆，香港，澳门，台湾，需要送修人本人携带有效证件前往 ARS 取回设备，不能指定其他人代为取回设备。\n\n参考资源：\n如您未能在Apple通知您产品已完成检测或维修且可以领取的六十（60）天内，领回产品及支付所有费用，Apple会认为产品已被您弃置...此外，上述六十（60）天期限届满后，Apple可就被弃置产品向您收取5元/天的保管费..."
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修体验 - 维修进度",
             question: "ARS 送修，查询维修进度。常规处理思路：",
             answer: "根据 CP400466 查看 Core 中的维修状态，向符合条件的客户提供信息。同时提醒客户后续可以通过维修状态查询链接自主查询。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修体验 - 维修进度",
             question: "维修/订件进度咨询（返厂维修与店内维修）",
             answer: "返厂维修：根据 Core 中信息告知客户，零售店也看不到更多信息，请指引客户耐心等待并关注维修状态更新，无需致电零售店咨询。\n所有的返厂维修问题，一旦建单返厂，零售店没有控制权，无法对维修进行加速。请安抚客户并建议客户关注邮件通知，耐心等待，无需致电零售店咨询。\n\n店内维修：零售店通常会给客户设置预估的等待时间预期，可以询问客户并查看 Core 中零售店的备注信息，如果零售店看到和之前的预期不同，会主动电话联系客户，如果没有收到联系，则表示预期暂无改变，可以请客户耐心等待，无需致电零售店咨询。（如果客户错过了零售店的电话，可以建议客户耐心等待零售店的再次联系，直接回拨此号码会进入热线队列，通常在当天或第二天零售店还会再次联系客户。）"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修体验 - 维修进度",
             question: "识别店内和返场维修：",
             answer: "方法一：可以查看维修状态详情进行区分。\n方法二：可以根据零售店的案例标题进行区分，比如 “Apple Store 商店寄送维修（退还至商店）” 这是一个返厂维修；“Apple Store 商店维修” 这是一个店内维修。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修体验 - 维修进度",
             question: "ARS 对维修进度的处理流程： 零售店处理店内维修 / 返厂维修的问题时，会向客户设置怎样的进度预期？",
             answer: "系统默认 7~14 天，客户可以通过 Apple 支持查询，时间或维修状态如果有变化，建议关注邮件通知，如果客户在店内留下手机号（客户可选），也会有短信通知。收到维修完成通知后，可以来店里取机。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修体验 - 维修进度",
             question: "零售店是否会分享维修进度查询链接给到客户？（比如邮件中是否已包含？）",
             answer: "请指引客户查看邮箱中是否有 Apple 发出的维修通知邮件，如果有可以直接查看，邮件中已包含查询维修状态链接，如果没有可以分享查询方法。（通常在工厂收到维修产品后发出此封邮件）"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修体验 - 维修进度",
             question: "维修中的案例，零售店是否会主动联系客户告知维修进度？什么类型的维修会主动联系客户？联系的频率是怎样的？",
             answer: "店内维修：有任何更新或改变，客户可以关注邮件和电话。若电话没有接听到，零售店会持续尝试联系。\n返厂维修：维修结束并到店取机的情况，可能会电话联系客户，客户也可以在 Apple 支持或邮箱中查询进度。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修体验 - 常规争议",
             question: "客户致电要求协助处理零售店维修产生的维修争议问题，Apple 支持应如何处理？",
             answer: "常规处理思路：了解事情经过，根据客户的描述和 Core 中的维修记录、零售店同事的备注信息，相信零售店同事的记录和判断，无需致电零售店对处理方案二次核实。向客户解释说明 Apple 的维修政策。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修体验 - 常规争议",
             question: "对 CS Code 的考量",
             answer: "参考 CP400443 考量是否符合 CS Code 的条件，同时，需要参考 Core 中零售店同事的备注信息，如果零售店的维修笔记已经标注维修方案，或记录了是否需要付费的状态，请尊重零售店的判断，请勿提供 CS CODE。（如果有极端的状况请联系经理讨论）\n考量以上信息拒绝提供 CS Code 之后，如果遇到客户表述是零售店指引他来获取 CS Code，请直接拒绝，无需致电零售店核实，并将此案例编号提供给您的经理。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修体验 - 常规争议",
             question: "如何了解零售店处理细节？",
             answer: "在 Core 中选择产品后找到对应的维修案例。 Apple Store 的备注信息会包含在维修案例中，也可能在 Advisor 创建的案例或独立的案例中。 查看所有关联案例中，查看之前 Advisor 的沟通处理记录。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修体验 - 常规争议",
             question: "T2 开具 CS Code 后，零售店多久可以查询并开始使用 CS Code协助客户？",
             answer: "系统有显示即可使用，建议 AppleCare 同事在提供 CS Code 之后，刷新当前案例，确认客户的序列号已绑定 CS Code。（若问题不着急，也可以考虑建议客户第二天再去零售店维修）"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修体验 - 常规争议",
             question: "当零售店处理维修争议类问题时，比如无法满足客户的维修要求，在店内的大致处理流程是怎样的？（升级路径）",
             answer: "所有的零售店执行的都是 Apple 的流程和标准，客户的维修需求只要是在相关标准范围内可达成的，零售店不会拒绝客户的要求。\n店内升级流程：接待的同事可以升级至经理（或者 Lead，不是 Store Leader）， 经理和 Lead 是有一定例外权限，但只仅限于维修金额折扣或 CS CODE（在系统允许创建的情况下），维修方式是返厂还是店内维修，需要以系统显示为准，无法提供任何特例。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修体验 - 常规争议",
             question: "零售店是否有任何场景需要指引客户联系 400 处理硬件维修类问题？",
             answer: "通常不会，涉及维修类的问题仅当客户设备存在激活锁问题或保修期异常等情况，才可能指引客户联系 AppleCare 线上支持。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修体验 - 常规争议",
             question: "零售店开具 CS Code 的流程是怎样的？参考标准是什么？",
             answer: "符合规程需要申请的情况：零售店会联系 CSS 申请。\n其他场景的 CS CODE，零售店会根据系统显示能否提供为准。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修体验 - 常规争议",
             question: "维修完成后若设备外观有磕碰，是否有相关指引和建议？",
             answer: "与客户确认是返厂维修还是店内维修，是否取机，是否签字确认。同时，参考 Core 中维修记录和零售店同事的备注信息，进行核对，无需致电零售店核实。\n所有维修提取，无论是返厂还是店内维修，取机时都会邀请客户先针对设备维修结果和外观等物理状态进行确认，客户需要签字确认，需要付费的部分也会确认后付费。\n取机后若客户坚持外观损伤存在，则可以直接前往 ARS，不需要预约。\n返厂维修：现场发现问题，零售店会联系 CSS，调取维修外观照片。\n店内维修：现场发现问题，零售店会协助客户直接解决。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修体验 - 常规争议",
             question: "客户提出联系服务热线解决问题",
             answer: "Retail 回应思路：“很抱歉，我们无法为通过维修中心进行的维修提供替代解决方案。”"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修体验 - 维修被拒",
             question: "为什么我的产品未经维修就被退回了?",
             answer: "回应思路：“我们会对运送到维修中心的产品进行筛查，以确定维修资格和功能状况。有关您的具体维修信息，请查看退回产品随附的产品服务摘要。”\n处理思路：查看其他团队的维修记录和之前的沟通记录。与顾客一起查看确认函，以了解此产品未经维修被退回的具体原因。没有完成硬件维修的原因可能有很多。例如，没有发现问题、问题通过软件恢复得到解决，或者产品并非正品。务必查看维修中心提供的确认函。\nApple 支持流程：如果有争议，请遵循 CP400441\nRetail 流程：如果有争议，请使用标准 RTA 上报流程进一步核实。 (中国大陆服务被拒申诉 SDA 除外)"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修体验 - 维修被拒",
             question: "如何确定我的设备中是否有非正品部件?",
             answer: "回应思路：“我们会对运送到维修中心的产品进行筛查，以确定维修资格和功能状况。有关您的具体维修信息，请查看退回产品随附的产品服务摘要。”\n处理思路：不要对超出确认函范围的详细信息妄加猜测。有时，透露更多详细信息会涉及敏感信息，而且披露 Apple 的内部筛查流程或结果可能会被 NEU 利用。这些详细信息还可能会让顾客产生误解，并引起进一步的争议。鉴于此，请仅讨论维修确认函中的内容。\nApple 支持流程：如果有争议，请遵循 CP400441\nRetail 流程：如果有争议，请使用标准 RTA 上报流程进一步核实。 (中国大陆服务被拒申诉 SDA 除外)"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修体验 - 维修被拒",
             question: "我可以请求了解关于维修被拒的更多详细信息吗?",
             answer: "店内维修：\n回应思路：“我们知道当前的维修结果可能与您预期的不同。但我们可以确信的是，Apple 经过详细排查，包括进行故障诊断和目视检查，确定该产品不符合维修条件。我们的技术人员始终会遵循所有维修指南。如果你还有其他疑问，我们很乐意为你解答。”\nApple 支持流程：如果有争议，请遵循 CP400441\n\n邮寄维修和返厂维修：\n回应思路：“维修中心在产品服务摘要中提供了有关您的维修的信息。我们无法提供更多信息。”\nApple 支持流程：如果有争议，请先遵循 CP400441。如果造成问题的原因与顾客无关，那么技术顾问可以遵循 CP400443。\n\nRetail 流程 (邮寄维修和返厂维修)：如果有争议，请使用标准 RTA 上报流程进一步核实，不要引导顾客联系其他渠道，如 Apple 支持，因为技术顾问只能获取产品服务摘要中包含的相同信息。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修体验 - 维修被拒",
             question: "关于使用第三方维修服务，是否有任何准则?",
             answer: "回应思路：“我们建议向 Apple 授权维修商寻求支持，因为他们使用正品部件并已完成 Apple 认证。对于授权维修所使用的替换部件，还提供至少 90 天的保修服务。”\n处理思路：不要对第三方维修提供商是否使用正品部件、其工艺水准或可能提供的任何保修服务妄加猜测。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修体验 - 维修被拒",
             question: "为什么过了这么久才告诉我维修被拒?",
             answer: "回应思路：“维修中心会仔细地对你的产品进行全面诊断。我们的目标始终是及时完成高质量的维修，但评估是否需要硬件维修需要一些时间。我们非常重视你的反馈，并且一直在寻找在保持维修质量的同时缩短维修周转时间的方法。”\n处理思路：不要对维修中心执行的故障排除或诊断规程妄加猜测。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修体验 - 维修被拒",
             question: "如何直接与维修中心沟通?",
             answer: "回应思路：“维修中心团队接受过对 Apple 产品进行故障排除和维修方面的培训，他们已提供产品服务摘要，并说明了拒绝维修的原因。我们理解这可能不是你期望的结果，但目前我们只能提供这么多信息。”\nApple 支持流程：如果有争议，请遵循 CP400441\nRetail 流程：如果有争议，请使用标准 RTA 上报流程进一步核实。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修体验 - 收费相关",
             question: "我邮寄设备后，为什么需要为额外的维修付费?",
             answer: "回应思路：“我们希望确保顾客在每次维修后能继续尽情享用他们的产品。在创建维修时，我们会对产品和报告的问题进行初步评估。不过，在维修过程中，如果发现其他故障或损坏，可能需要使用与最初预期不同的部件。根据具体情况，该维修可能在保修或 AppleCare 服务计划保障范围内。如果不在保障范围内，会提供保外费用报价。如果你拒绝授权，Apple 可能会不经维修就退回您的产品。”\nRetail 流程：不要引导顾客联系其他渠道，如 Apple 支持，因为技术顾问只能获取产品服务摘要中包含的相同信息。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修体验 - 收费相关",
             question: "我怎么知道额外的损坏不是你们或快递员造成的?",
             answer: "回应思路：“我们会遵循明确的流程来确保所有产品在维修和运输过程中的安全。这包括使用单独的保护性包装和采取其他措施。”\nRetail 流程：如果对物流处理有争议，请上报至 CSS。如果对设备状况有争议，请使用标准 RTA 上报流程进行进一步核实。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修体验 - 收费相关",
             question: "我怎么知道浸液损坏不是由制造缺陷造成的?",
             answer: "回应思路：“Apple 采用严格的生产和制造测试流程，以确保我们的产品符合质量标准。就您的情况而言，Apple 对产品进行了全面检查，确定造成所报告问题的原因是浸液损坏，并且浸液损坏是由于未按相关 IP67/IP68 等级使用造成的。”\n处理思路：与顾客分享 Apple 网页上有关防水性及其如何适用于其设备的更多信息。\nRetail 流程：请查看 https://support.apple.com/en-sg/108039 如果有争议，请使用标准 RTA 上报流程进一步核实。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修体验 - 邮寄维修",
             question: "为什么我的维修无法在当前维修点完成?",
             answer: "回应思路：“一些维修可能需要当前维修点没有的专业设备、专业知识或部件。在这种情况下，您的设备将被转移到专门的维修中心，那里更适合处理特定维修需求。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修体验 - 邮寄维修",
             question: "为什么设备退回后的状况比我发货时更糟? (被改装或已维修)",
             answer: "被改装 回应思路：“我们知道维修结果可能不符合您的期望。对于产品在维修过程中发生的任何损坏，如果是由于 Apple 或 Apple 授权服务提供商以外的其他方进行任何未经授权改装、维修或更换造成的，Apple 概不负责。”\n\n已维修 (保内维修 / 保外维修) 回应思路：“我们知道维修结果可能不符合您的期望。我们会遵循明确的流程来确保所有产品在维修和运输过程中的安全。这包括使用单独的保护性包装和采取其他措施。”\nRetail 流程：如果有争议，请使用标准 RTA 上报流程进一步核实。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修体验 - 邮寄维修",
             question: "为什么维修时间比 ARS 告知的时间要长?",
             answer: "回应思路：“我们的目标始终是及时完成高质量的维修，但需要一些时间来评估和诊断问题，然后完成所需的维修。通常，维修需要 7 到 15 个日历日才能完成。然而，各种外部因素或不可预见的情况可能会影响维修时间安排。例如，发现设备有其他问题或并发故障可能会延长交付时间。我们非常重视您的反馈，并且一直在寻找在保持维修质量的同时缩短维修周转时间的方法。我们会密切关注这一维修，并将最新进展告知你。”\nRetail 流程：确保密切关注维修，并及时将最新进展告知顾客。如果有原因不明的延迟，请上报至 CSS 或按照你所在团队的指引进行调查。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修体验 - 重复维修",
             question: "维修后，我的设备仍然无法正常使用。该怎么办?",
             answer: "回应思路：“如有需要，我们会帮助您进行进一步的排查，解决存在的问题。我们希望确保顾客在每次维修后能继续尽情享用他们的产品。我们需要查看之前的维修备注并重新评估产品，以便确定后续步骤。”\n处理思路：查看之前的维修备注，如有需要，请重新评估并为顾客提供维修或预约支持。\nRetail 流程：核实原始维修是否有处理不当的情况。在可能的情况下，在店内完成二次维修，以便及时提供维修结果。\n店内维修：与相关团队成员分享反馈。\n返场维修：使用 MobileGenius 和 Repair Central 的反馈功能与维修中心分享反馈。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修体验 - 重复维修",
             question: "既然是重复维修，为什么不向我提供全新的替换产品?",
             answer: "回应思路：“我们希望确保顾客在每次维修后能继续尽情享用他们的产品。我们的产品由经过严格测试的耐用材料制成，同时， 我们希望使用对环境影响较小的部件提供高质量的维修。我们会为 Apple 或 Apple 授权服务提供商完成的所有维修提供保修。”\n处理思路：始终为顾客提供符合 Apple 政策和当地法律法规 (如消费者权益保护法) 的结果，例如：根据中国或其他受影响市场的消费者权益保护法，如果设备在多次维修后仍然无法正常使用，并且情况符合 CL 更换标准，员工需要为顾客提交 CRU 请求。此为标准流程。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修体验 - 重复维修",
             question: "我是否可以得到时间补偿?",
             answer: "回应思路：“我们理解这与您的预期不符，同时希望确保尽快让你的产品恢复正常。我们需要评估产品，并帮助确定后续步骤。”\nApple 支持流程：没有时间补偿。无法对顾客个人时间提供补偿。如果产品满足特定标准，可能会提供 CS 代码涵盖的维修。 有关其他方案，请查看 CP401287。\nRetail 流程：如果有争议，请与经理一起评估具体情况并确定后续步骤。除非维修规程中有具体指导，否则请不要引导顾客联系其他渠道。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修体验 - 扩展计划",
             question: "为什么没有人与我直接沟通服务计划相关事宜?",
             answer: "回应思路：“我们理解这与您的预期不符，同时希望确保您的 Apple 产品可以继续正常使用。有时，出于隐私考虑，Apple 可能没有联系信息或无权使用相应联系信息联系顾客。我们很乐意分享我们网页上关于服务计划的更多信息，并且现在可以为你解答相关问题。”\n处理思路：向顾客展示其产品对应的服务计划网页。解答任何问题，并根据需要提供后续维修步骤。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修体验 - 扩展计划",
             question: "这是产品制造问题，为什么服务计划还有时间限制?",
             answer: "回应思路：“我们理解这与您的预期不符，同时希望确保您的 Apple 产品可以继续正常使用。我们很乐意分享我们网页上关于维修计划的更多信息，并且现在可以为您解答相关问题。”\n处理思路：向顾客展示其产品对应的服务计划网页。解答任何问题，并根据需要提供后续维修步骤。\n注意：不要使用 “质量问题” 或 “缺陷” “召回”等词语。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修体验 - 扩展计划",
             question: "如何确定替换产品不会有同样的问题?",
             answer: "回应思路：“我们希望确保顾客在每次维修后能继续尽情享用他们的产品。我们的产品由经过严格测试的耐用材料制成，同时， 我们希望使用对环境影响较小的部件提供高质量的维修。我们会为 Apple 或 Apple 授权服务提供商完成的所有维修提供延期保修保障。”\n处理思路：始终为顾客提供符合当地法律法规和 Apple 政策的结果。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修体验 - 扩展计划",
             question: "为什么我的设备出现故障，却不在服务计划范围内?",
             answer: "回应思路：“经过全面的故障排除和目视检查，我们确认该故障不在服务计划保障范围内。我们知道这可能不符合您的期望。请让我们介绍可行方案，并与您一起查看我们的诊断结果。我们还可以了解下计划之外的维修方案。”\n处理思路：如果对诊断结果或功能测试有争议，请通过提供基于保修的解决方案来帮助解决问题。\nRetail 流程：如果对诊断结果或功能测试有争议，请使用标准 RTA 上报流程进行进一步核实。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修体验 - 扩展计划",
             question: "我在社交媒体平台上看到有人得到免费维修或更换。为什么他们可以免费，而我不行?",
             answer: "回应思路：“造成相似故障的原因可能有所不同，此类情况存在细微差别。对我们来说，谨慎对待每种情况很重要，我们会全面诊断和评估交给我们维修的每件产品。请让我为您介绍维修资格条件，并一起讨论下诊断结果。我们还可以谈谈计划之外的维修方案。”\n处理思路：指出社交媒体上有很多内容，可能并不总是完全准确或以事实为依据。根据需要协助进行故障排除评估。\nRetail 流程：始终确保通过服务计划对产品进行全面评估，以确定维修资格。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修体验 - 扩展计划",
             question: "我知道有一个维修计划，我有相同的机型。我的设备是否有维修计划涵盖的问题? Apple 是否设计了有缺陷的产品? 有什么补偿方案或纠正措施?",
             answer: "回应思路：Apple 率先采用革命性技术，旨在改善全球各地顾客的生活，并致力于遵循严格的质量保证标准。Apple 通过有限保修服务和可选的 AppleCare+ 服务计划为产品问题提供保障，并尊重当地法律法规赋予用户的权益。我很乐意与您分享 Apple 网页上关于服务计划的信息。”\n处理思路：始终确保通过服务计划对产品进行全面评估，以确定维修资格。引导顾客访问相关服务计划的网页以获取更多信息。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修保障 - AC+",
             question: "如果顾客为设备购买了 AppleCare+ 服务计划，该如何响应顾客的 WUR (整机更换) 请求?",
             answer: "回应思路：“我们希望确保顾客在每次维修后能继续尽情享用他们的产品。我们的产品由经过严格测试的耐用材料制成，同时， 我们希望使用对环境影响较小的部件提供高质量的维修。Apple 会针对设备确定合适的解决方案，并确保设备符合 Apple 标准。此外，我们还会为 Apple 或 Apple 授权服务提供商完成的所有维修提供保修。”\n处理思路：引导顾客访问 AppleCare 产品的网页，并分享其特定协议的益处。根据所在地和具体情况，益处可以是延期保修、优先电话支持，或不限次数的意外损坏保修服务 (会收取一定的服务费)。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修保障 - AC+",
             question: "购买 AppleCare+ 服务计划后，为什么我仍然需要支付服务费?",
             answer: "回应思路：“您似乎对服务费有疑问，我很乐意为你提供有关您的 AppleCare+ 服务计划协议的详细信息。”\n处理思路：引导顾客访问 AppleCare 产品的网页，并分享有关其保障范围的详细信息。根据需要介绍需要付费的方案。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修保障 - AC+",
             question: "我在保修期内报告了问题，但在保修期到期后才将设备送修。",
             answer: "回应思路：“我理解您的疑虑。请让我查看下支持请求历史记录，以确认相关详细信息。”\n处理思路：详细查看任何联系历史记录和任何支持请求备注，并确认向 Apple 报告问题的具体时间。\nApple 支持流程：请查看 CP400443。\nRetail 流程：参考知识库中的文章 117843 来评估是否应提供保修。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修保障 - AC+",
             question: "保修期到期后有宽限期吗?",
             answer: "回应思路：“每种维修情况都有其特别之处。我们会全面诊断和评估交给我们维修的每件产品，以确定正确的保修范围。为了公平对待所有顾客，我们会根据有限保修、AppleCare 协议或维修计划以及当地法律法规规定的时间范围提供保修。\n处理思路：详细查看支持请求备注，确认向 Apple 报告问题的具体时间，并遵循下面的相应指引。此外，请说明我们会尽量为购买 AppleCare+ 服务计划或其他延期保修计划的顾客着想。查看并分享任何其他可行方案。\nApple 支持流程：请查看 CP400443。\nRetail 流程：参考知识库中的文章 117843 来评估是否应提供保修。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修保障 - AC+",
             question: "软件更新导致出现硬件问题，为什么不在保修范围内?",
             answer: "回应思路：“我们从您那里了解到，该故障是在安装了一项软件更新后出现的。虽然软件不会造成硬件损坏，但软件更新后可能会出现预先存在的硬件问题。由于软件更新通常会提升性能和修复错误，我们建议执行更新。请让我运行诊断程序，并进行全面评估，以确定今天我们可以提供哪些帮助。”\n处理思路：务必查看相关维修指南，获取故障排除方面的协助。\nRetail 流程：如果对诊断结果或功能测试有争议，请使用标准 RTA 上报流程进行进一步核实。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修保障 - AC+",
             question: "我购买了 AppleCare+ 服务计划，为什么我的设备不在保修范围内?",
             answer: "回应思路：“每种维修情况都有其特别之处，这取决于使用情况和具体是什么故障。我们的团队和维修点会全面诊断和评估交来维修的每件产品，以确定正确的保修范围。最终结果以他们的回复为准。”\nRetail 流程：如果对诊断结果或功能测试有争议，请使用标准 RTA 上报流程进行进一步核实。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修保障 - AC+",
             question: "为什么我的替换设备不是未开封的全新产品?",
             answer: "回应思路：“我们希望确保顾客在每次维修后能继续尽情享用他们的产品。我们的产品由经过严格测试的耐用材料制成，同时， 我们希望使用对环境影响较小的部件提供高质量的维修。我们会为 Apple 或 Apple 授权服务提供商完成的所有维修和 更换提供保修。”\n处理思路：始终为顾客提供符合当地法律法规和 Apple 政策的结果。\n注意：在中国，所有替换产品都是新产品，但没有销售包装和配件。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修保障 - AC+",
             question: "AppleCare+ 服务计划退款请求",
             answer: "回应思路：“我理解你对 AppleCare+ 服务计划协议的疑虑。我们知道，AppleCare+ 服务计划的延期保修、优先支持和意外损坏保修服务物超所值。能否告知您的具体疑虑，以便我们可以一起找到合适的解决方案?”\n处理思路：务必尝试了解顾客的疑虑是什么，以及是否可以消除这些疑虑，而不是取消协议并退款。此外，请确保核实在提供计划保障的国家 / 地区，符合条件的 AppleCare+ 服务计划支持具体有哪些。\nApple 支持流程：当需要退款时，请按照标准规程引导顾客联系 AA。(CP401187)\nAA 流程：顾问需要核实序列号、来电者是否为协议所有者以及 AppleCare+ 服务计划购买渠道，并收集 POP，以便与顾客验证原付款方式。"
         ),
         ChorusFAQEntry(
             pageId: "7345748",
-            category: "ARS OB 常规咨询",
+            category: "ARS OB",
             subCategory: "维修保障 - AC+",
             question: "如果顾客在 ARS 发起更换 (仅限设备)，并声称 AppleCare+ 服务计划缺失。",
             answer: "回应思路：“谢谢您告知我这一情况，请让我查看一下详细信息，了解具体经过。”\n处理思路：查看维修历史记录，了解顾客的原产品是否附带 AppleCare+ 服务计划。如果预期的协议转移尚未完成，请按照标准规程上报至 AA。(CP401187)\nAA 流程：如果顾客发起更换 (仅限设备)，则顾客应拨打热线电话，将 AppleCare+ 服务计划转移到新设备。 AppleCare+ 服务计划不会自动转移到新设备。"
@@ -1323,6 +1323,64 @@ public class ChorusFAQSyncService: NSObject, ObservableObject {
             subCategory: "服务支持与维修规程",
             question: "客户问到与 Apple Fitness+ 相关的问题，中国大陆并无提供此媒体服务，我们应该如何支持客户？",
             answer: "如同中国客户在 Apple Watch 使用美国 Apple 账户且有订阅 Apple Fitness+ 而致电询问的问题一样，根据规程提供支持即可。\n如果您遇到与 Apple Fitness+ 相关的问题，无法使用现有的文稿来解决客户问题、出现与技术文档或用户手册不符的情况，且非硬件问题，可以 RTA。"
+        ),
+        
+        // MARK: - 7. AASP OB (Page 7312138)
+        ChorusFAQEntry(
+            pageId: "7312138",
+            category: "AASP OB",
+            subCategory: "服务准则与外呼要求",
+            question: "与顾客互动时应遵循哪些一般原则？",
+            answer: "与顾客互动时应遵循以下五大原则：\n• 基于事实的解决方案：任何维修方案都必须依据设备经过目视机械检查（VMI）和相关诊断程序后的结果来确定。不能在没有诊断结果的情况下，对维修方案、费用或时间做出不确定的承诺。\n• 一体化服务：应始终秉持“一个苹果”的理念，减少不必要的客户转介。无论是 ARS 还是 AASP，都是解决客户问题的窗口，会尽力直接为客户提供支持。\n• 清晰、准确地记录：在系统中简明扼要地记录与客户的互动，确保后续任何跟进的同事都能清晰了解情况，保证服务体验的一致性。\n• 尊重并回顾服务历史：在接触客户时，认真查看过往的服务记录，避免让客户重复提供信息或进行已经做过的操作。\n• 共情与专业沟通：理解客户遇到的问题，并以专业的态度解释相关政策和诊断结果，如果客户有误解，有义务帮助他们了解实际情况。"
+        ),
+        ChorusFAQEntry(
+            pageId: "7312138",
+            category: "AASP OB",
+            subCategory: "服务准则与外呼要求",
+            question: "在什么情况下可以外呼联系 AASP 或 Apple Store 零售店？",
+            answer: "针对 AASP 的所有外呼（Outbound），请始终遵循现有规程 [123856 联系亚太地区的 AASP 或 Apple Store 商店](core://articleId=123856&locale=zh_CN) 中的要求。仅在以下情况下联系 AASP 或 Apple Store 商店：\n• 另有规程指示你进行联系。\n• 你没有足够的信息就客户的反馈展开调查或提供解决方案（这里的反馈指客户针对 AASP/ARS 体验的反馈、投诉、疑问等，不包括维修前的常规信息咨询）。\n• 你需要确认 AASP 或 Apple Store 商店能不能[更换产品](core://articleId=124487&locale=zh_CN)。\n\n⚠️ 提醒：如果不存在上述情况，请遵循标准来电处理规程，切勿随意致电门店。"
+        ),
+        ChorusFAQEntry(
+            pageId: "7312138",
+            category: "AASP OB",
+            subCategory: "维修前咨询",
+            question: "客户咨询维修方案、费用、备件库存或维修时长，应如何回应？",
+            answer: "对于更换屏幕、电池等常见维修，客户会关心是否需要返厂、备件库存情况、维修时长等。\n客户针对维修方案的讨论，建议客户完成实际店内的诊断后，店内同事会根据诊断的结果，提供最终维修方案和维修时长的预期。\n⚠️ Advisor 无需致电 AASP。所有维修前咨询始终遵循 [124491 讨论预约服务](core://articleId=124491&locale=zh_CN) 来处理。"
+        ),
+        ChorusFAQEntry(
+            pageId: "7312138",
+            category: "AASP OB",
+            subCategory: "维修前咨询",
+            question: "客户咨询 AASP 是否提供备用机以及接机点政策，应如何说明？",
+            answer: "备用机的提供与设备保修资格、具体故障、维修形式等均相关，具体资格会在店内完成诊断后确认，Advisor 无需致电 AASP。\n\n📍 接机点特别说明：若送修发生在接机点，请建议客户以接机点提供的信息为准，Advisor 无需致电接机点，并且请勿主动引导客户在接机点现场来电。"
+        ),
+        ChorusFAQEntry(
+            pageId: "7312138",
+            category: "AASP OB",
+            subCategory: "维修前咨询",
+            question: "客户咨询无发票或购买凭证能否去 AASP 送修，应如何处理？",
+            answer: "客户可能就是否需要携带销售凭证、发票进行维修来电咨询。对此，门店会根据现场检测情况以及系统显示来确定，无法提前确认。\n⚠️ Advisor 无需致电 AASP。"
+        ),
+        ChorusFAQEntry(
+            pageId: "7312138",
+            category: "AASP OB",
+            subCategory: "维修进度与异常处理",
+            question: "客户在 AASP 送修了设备想了解维修进度，该如何指引？",
+            answer: "• 常规处理方式：根据 [124653](core://articleId=124653&locale=zh_CN) 查看 Core 中的维修状态，向符合条件的客户提供信息。同时提醒客户后续可以通过维修状态查询链接自主查询（跟踪进度和确认重新报价）。\n• 维修进度咨询：\n  - 返厂维修：根据 Core 中信息告知客户，Apple 授权服务商处查到的信息与线上相同，请指引客户耐心等待并关注维修状态更新。\n  - 店内维修：Apple 授权服务商通常会给客户设置预估的等待时间预期，可以请客户联系 Apple 授权服务商了解详情。"
+        ),
+        ChorusFAQEntry(
+            pageId: "7312138",
+            category: "AASP OB",
+            subCategory: "维修进度与异常处理",
+            question: "客户在 AASP 送修了设备，要求加急/加快返厂维修进度，应如何回应？",
+            answer: "所有的返厂维修问题，一旦完成建单返厂，Apple 授权服务商都会尽快将客户的设备发出，维修工厂在收到设备后也会在第一时间检查维修。\n请安抚客户并建议客户关注邮件通知，耐心等待即可。"
+        ),
+        ChorusFAQEntry(
+            pageId: "7312138",
+            category: "AASP OB",
+            subCategory: "维修进度与异常处理",
+            question: "客户致电反映 AASP 返厂维修进度长时间停滞或异常，应如何升级处理？",
+            answer: "正常情况下 Apple 授权服务商会每天查看一次 GSX 中的维修状态，如果有异常会及时与客户联系。\n\n⚠️ 异常升级触发标准：\n• 设备到达维修中心但超过 3 个工作日仍未开始维修；\n• 或已开始维修但超过 7 个日历日仍未有进一步更新。\n\n升级路径：\n• 如果客户讲普通话，请联系 Tier 2；\n• 如果您是 Tier 2 Advisor（技术顾问），请联系 CR+ 处理。"
         )
     ]
     
@@ -1387,12 +1445,23 @@ public class ChorusFAQSyncService: NSObject, ObservableObject {
             }
         }
         
-        self.lastSyncTime = Date()
+        let now = Date()
+        self.lastSyncTime = now
         UserDefaults.standard.set(self.lastSyncTime, forKey: lastSyncTimeKey)
+        
+        // Save sync meta to shared folder if connected
+        if let baseURL = SharedFolderSyncService.shared.sharedFolderURL, SharedFolderSyncService.shared.isConnected {
+            let metaURL = baseURL.appendingPathComponent("faq/sync_meta.json")
+            let meta = SyncMetaRecord(lastSyncTime: now, syncedBy: store.currentUser.name)
+            if let data = try? JSONEncoder().encode(meta) {
+                try? data.write(to: metaURL)
+            }
+        }
+        
         self.isSyncing = false
         
         if importedCount > 0 {
-            self.lastSyncResult = "成功从 Chorus (RCC/ARS/BTS/AA/SDA/Apple TV) 提取并同步 \(importedCount) 条问答！"
+            self.lastSyncResult = "成功从 Chorus (RCC/ARS/BTS/AA/SDA/Apple TV/AASP OB) 提取并同步 \(importedCount) 条问答！"
         } else {
             self.lastSyncResult = "Chorus 知识库校验完成，已刷新全部 \(updatedCount) 条问答至最新状态。"
         }
@@ -1460,8 +1529,18 @@ public class ChorusFAQSyncService: NSObject, ObservableObject {
             }
         }
         
-        self.lastSyncTime = Date()
+        let categorySyncNow = Date()
+        self.lastSyncTime = categorySyncNow
         UserDefaults.standard.set(self.lastSyncTime, forKey: lastSyncTimeKey)
+        
+        if let baseURL = SharedFolderSyncService.shared.sharedFolderURL, SharedFolderSyncService.shared.isConnected {
+            let metaURL = baseURL.appendingPathComponent("faq/sync_meta.json")
+            let meta = SyncMetaRecord(lastSyncTime: categorySyncNow, syncedBy: store.currentUser.name)
+            if let data = try? JSONEncoder().encode(meta) {
+                try? data.write(to: metaURL)
+            }
+        }
+        
         self.isSyncing = false
         
         if importedCount > 0 {

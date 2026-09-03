@@ -11,6 +11,7 @@ public struct NewsView: View {
     
     @State private var selectedArticleID: UUID?
     @State private var selectedCategory: NewsCategory = .all
+    @State private var onlyUnread: Bool = false
     @State private var onlyBookmarked: Bool = false
     @State private var searchText: String = ""
     
@@ -35,6 +36,9 @@ public struct NewsView: View {
         
         return store.newsArticles.filter { article in
             if selectedCategory != .all && article.category != selectedCategory {
+                return false
+            }
+            if onlyUnread && store.readNewsArticleIDs.contains(article.id) {
                 return false
             }
             if onlyBookmarked && !article.isBookmarked {
@@ -90,9 +94,12 @@ public struct NewsView: View {
                let article = store.newsArticles.first(where: { $0.id == targetID }) {
                 selectedCategory = article.category
                 selectedArticleID = article.id
+                store.markNewsArticleAsRead(id: article.id)
             } else if selectedCategory != .all {
                 selectedArticleID = filteredArticles.first?.id
-                store.selectedNewsArticleID = selectedArticleID
+                if let firstID = selectedArticleID {
+                    store.markNewsArticleAsRead(id: firstID)
+                }
             }
         }
         .onChange(of: store.selectedNewsArticleID) { _, newID in
@@ -100,21 +107,25 @@ public struct NewsView: View {
                let article = store.newsArticles.first(where: { $0.id == targetID }) {
                 selectedCategory = article.category
                 selectedArticleID = article.id
+                store.markNewsArticleAsRead(id: article.id)
             }
         }
         .onChange(of: selectedCategory) { _, newCat in
             if newCat == .all && searchText.trimmingCharacters(in: .whitespaces).isEmpty {
                 selectedArticleID = nil
-                store.selectedNewsArticleID = nil
             } else if selectedArticleID == nil || !filteredArticles.contains(where: { $0.id == selectedArticleID }) {
                 selectedArticleID = filteredArticles.first?.id
-                store.selectedNewsArticleID = selectedArticleID
+                if let firstID = selectedArticleID {
+                    store.markNewsArticleAsRead(id: firstID)
+                }
             }
         }
         .onChange(of: selectedArticleID) { _, newID in
             if let id = newID {
-                store.selectedNewsArticleID = id
-                store.incrementReadCount(id: id)
+                if store.selectedNewsArticleID != id {
+                    store.selectedNewsArticleID = id
+                }
+                store.markNewsArticleAsRead(id: id)
             }
         }
     }
@@ -217,14 +228,41 @@ public struct NewsView: View {
             }
             .padding(.vertical, 1)
             
-            // 3. Only Bookmarked Toggle + Sync Status & Total Count
-            HStack(spacing: 6) {
+            // 3. Only Unread / Bookmarked Toggle + Mark All as Read + Total Count
+            HStack(spacing: 8) {
+                Toggle(isOn: $onlyUnread) {
+                    Text("只看未读")
+                        .font(.system(size: 11))
+                        .foregroundColor(onlyUnread ? .blue : .secondary)
+                }
+                .toggleStyle(.checkbox)
+                
                 Toggle(isOn: $onlyBookmarked) {
                     Label("只看收藏", systemImage: "bookmark.fill")
                         .font(.system(size: 11))
                         .foregroundColor(onlyBookmarked ? .yellow : .secondary)
                 }
                 .toggleStyle(.checkbox)
+                
+                if store.unreadNewsCount > 0 {
+                    Button(action: {
+                        store.markAllNewsArticlesAsRead()
+                    }) {
+                        HStack(spacing: 3) {
+                            Image(systemName: "checkmark.circle")
+                                .font(.system(size: 10))
+                            Text("全部已读")
+                                .font(.system(size: 11, weight: .medium))
+                        }
+                        .foregroundColor(.accentColor)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.accentColor.opacity(0.08))
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                    }
+                    .buttonStyle(.plain)
+                    .help("将当前所有未读邮件一键标记为已读")
+                }
                 
                 Spacer()
                 
@@ -293,19 +331,38 @@ public struct NewsView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 List(filteredArticles, selection: $selectedArticleID) { article in
-                    VStack(alignment: .leading, spacing: 4) {
+                    let isUnread = !store.readNewsArticleIDs.contains(article.id)
+                    
+                    VStack(alignment: .leading, spacing: 5) {
                         HStack(alignment: .top, spacing: 6) {
+                            if isUnread {
+                                Circle()
+                                    .fill(Color.blue)
+                                    .frame(width: 7, height: 7)
+                                    .padding(.top, 4)
+                            }
+                            
                             Image(systemName: article.category == .greenEmail ? "envelope.fill" : article.category.iconName)
                                 .font(.system(size: 9))
                                 .foregroundColor(article.category == .greenEmail ? .green : .accentColor)
-                                .padding(.top, 3)
+                                .padding(.top, isUnread ? 3 : 2)
                             
                             Text(article.title)
-                                .font(.system(size: 12.5, weight: .medium))
+                                .font(.system(size: 12.5, weight: isUnread ? .bold : .medium))
                                 .foregroundColor(.primary)
                                 .lineLimit(2)
                             
                             Spacer()
+                            
+                            if isUnread {
+                                Text("未读")
+                                    .font(.system(size: 9.5, weight: .bold))
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 1.5)
+                                    .background(Color.blue.opacity(0.12))
+                                    .foregroundColor(.blue)
+                                    .clipShape(RoundedRectangle(cornerRadius: 3))
+                            }
                             
                             if article.isBookmarked {
                                 Image(systemName: "bookmark.fill")

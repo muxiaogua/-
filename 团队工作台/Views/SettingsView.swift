@@ -150,41 +150,61 @@ public struct SettingsView: View {
     // MARK: - Edit Profile Sheet
     
     private var editProfileSheetView: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 20) {
+            // Header
             HStack {
-                Text("修改我的显示名称与头像")
-                    .font(.system(size: 16, weight: .bold))
+                HStack(spacing: 8) {
+                    Image(systemName: "person.crop.circle.badge.checkmark")
+                        .font(.system(size: 18))
+                        .foregroundColor(.accentColor)
+                    Text("修改我的显示名称与头像")
+                        .font(.system(size: 16, weight: .bold))
+                }
                 Spacer()
-                Button("关闭") {
-                    showEditProfileSheet = false
+                Button(action: { showEditProfileSheet = false }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
                 }
                 .buttonStyle(.plain)
             }
             
             Divider()
             
+            // Name Input Section
             VStack(alignment: .leading, spacing: 6) {
                 Text("我的姓名 / 称呼")
-                    .font(.system(size: 12, weight: .semibold))
-                TextField("请输入您的真实姓名或称谓（如：亮亮）", text: $editName)
+                    .font(.system(size: 13, weight: .semibold))
+                TextField("请输入您的姓名（如：Beauty / 亮亮）", text: $editName)
                     .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 13))
             }
             
-            VStack(alignment: .leading, spacing: 8) {
+            // Avatar Selection (Grid Layout)
+            VStack(alignment: .leading, spacing: 10) {
                 Text("选择头像图标")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 13, weight: .semibold))
                 
-                HStack(spacing: 12) {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 5), spacing: 12) {
                     ForEach(availableAvatars, id: \.self) { sym in
                         Button(action: {
                             editAvatar = sym
                         }) {
-                            Image(systemName: sym)
-                                .font(.system(size: 20))
-                                .foregroundColor(editAvatar == sym ? .accentColor : .secondary)
-                                .padding(8)
-                                .background(editAvatar == sym ? Color.accentColor.opacity(0.15) : Color.secondary.opacity(0.08))
-                                .clipShape(Circle())
+                            ZStack {
+                                Circle()
+                                    .fill(editAvatar == sym ? Color.accentColor.opacity(0.18) : Color.secondary.opacity(0.08))
+                                    .frame(width: 44, height: 44)
+                                
+                                Image(systemName: sym)
+                                    .font(.system(size: 20))
+                                    .foregroundColor(editAvatar == sym ? .accentColor : .primary)
+                                
+                                if editAvatar == sym {
+                                    Circle()
+                                        .stroke(Color.accentColor, lineWidth: 2)
+                                        .frame(width: 44, height: 44)
+                                }
+                            }
                         }
                         .buttonStyle(.plain)
                     }
@@ -193,12 +213,14 @@ public struct SettingsView: View {
             
             Divider()
             
+            // Action Buttons
             HStack {
                 Spacer()
                 Button("取消") {
                     showEditProfileSheet = false
                 }
-                .buttonStyle(.bordered)
+                .keyboardShortcut(.cancelAction)
+                .controlSize(.regular)
                 
                 Button("保存修改") {
                     let name = editName.trimmingCharacters(in: .whitespaces)
@@ -210,11 +232,14 @@ public struct SettingsView: View {
                     showEditProfileSheet = false
                 }
                 .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
+                .controlSize(.regular)
                 .disabled(editName.trimmingCharacters(in: .whitespaces).isEmpty)
             }
         }
-        .padding(24)
-        .frame(width: 440)
+        .padding(26)
+        .frame(width: 460, height: 350)
+        .background(Color(NSColor.windowBackgroundColor))
     }
     
     // MARK: - iCloud Shared Folder Sync

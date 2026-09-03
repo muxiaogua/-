@@ -8,7 +8,8 @@ import AppKit
 
 public enum FAQDatabase: String, CaseIterable, Identifiable {
     case rcc = "RCC 常见场景"
-    case arsob = "ARS OB 常规咨询"
+    case arsob = "ARS OB"
+    case aaspob = "AASP OB"
     case bts = "BTS 返校季"
     case aa = "AA FAQ"
     case sda = "SDA"
@@ -20,6 +21,7 @@ public enum FAQDatabase: String, CaseIterable, Identifiable {
         switch self {
         case .rcc: return "phone.fill"
         case .arsob: return "wrench.and.screwdriver.fill"
+        case .aaspob: return "building.2.fill"
         case .bts: return "graduationcap.fill"
         case .aa: return "doc.text.fill"
         case .sda: return "shield.lefthalf.filled"
@@ -50,8 +52,14 @@ public struct FAQView: View {
     
     // Total items in currently selected knowledge base
     private var itemsInCurrentDB: [FAQItem] {
-        store.faqItems.filter {
-            $0.category == selectedDatabase.rawValue || ($0.category == "RCC" && selectedDatabase == .rcc)
+        let dbName = selectedDatabase.rawValue
+        let isRCC = (selectedDatabase == .rcc)
+        let isARSOB = (selectedDatabase == .arsob)
+        return store.faqItems.filter { item in
+            if item.category == dbName { return true }
+            if isRCC && item.category == "RCC" { return true }
+            if isARSOB && item.category == "ARS OB 常规咨询" { return true }
+            return false
         }
     }
     
@@ -197,7 +205,9 @@ public struct FAQView: View {
             targetDB = .sda
         } else if item.category == "Apple TV" {
             targetDB = .appleTV
-        } else if item.category == "ARS OB 常规咨询" {
+        } else if item.category == "AASP OB" {
+            targetDB = .aaspob
+        } else if item.category == "ARS OB" || item.category == "ARS OB 常规咨询" {
             targetDB = .arsob
         } else if item.category == "BTS 返校季" {
             targetDB = .bts
@@ -232,9 +242,9 @@ public struct FAQView: View {
                     }) {
                         HStack(spacing: 6) {
                             Image(systemName: db.iconName)
-                                .font(.system(size: 11))
+                                .font(.system(size: 12))
                             Text(db.rawValue)
-                                .font(.system(size: 12.5, weight: selectedDatabase == db ? .semibold : .regular))
+                                .font(.system(size: 13, weight: selectedDatabase == db ? .semibold : .regular))
                         }
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
@@ -305,7 +315,7 @@ public struct FAQView: View {
             }
             .buttonStyle(.plain)
             .disabled(chorusSync.isSyncing)
-            .help("从 Chorus 知识库 (RCC:5530436 / ARS:7345748 / BTS:8034582 / AA:7982276 / SDA:7861236 / Apple TV:7550958) 提取并刷新最新问答")
+            .help("从 Chorus 知识库 (RCC:5530436 / ARS:7345748 / AASP:7312138 / BTS:8034582 / AA:7982276 / SDA:7861236 / Apple TV:7550958) 提取并刷新最新问答")
         }
     }
     

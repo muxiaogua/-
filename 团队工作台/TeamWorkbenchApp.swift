@@ -13,9 +13,10 @@ struct TeamWorkbenchApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(store)
+                .navigationTitle("")
         }
-        .windowStyle(.titleBar)
-        .windowToolbarStyle(.unified)
+        .windowStyle(.hiddenTitleBar)
+        .windowToolbarStyle(.unifiedCompact)
         .commands {
             SidebarCommands()
         }

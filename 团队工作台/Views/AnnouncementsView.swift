@@ -25,10 +25,11 @@ public struct AnnouncementsView: View {
                 return false
             }
             // Status Filter
-            if selectedStatusFilter == "未读" && (!item.requiresAcknowledgment || item.isAcknowledged) {
+            let isUserAcked = item.acknowledgments.contains(where: { $0.memberName == store.currentUser.name })
+            if selectedStatusFilter == "未读" && (!item.requiresAcknowledgment || isUserAcked) {
                 return false
             }
-            if selectedStatusFilter == "已读" && !item.isAcknowledged {
+            if selectedStatusFilter == "已读" && !isUserAcked {
                 return false
             }
             if selectedStatusFilter == "置顶" && !item.isPinned {
@@ -96,19 +97,27 @@ public struct AnnouncementsView: View {
         .onAppear {
             if let targetID = store.selectedAnnouncementID {
                 selectedAnnouncementID = targetID
+                store.markAnnouncementAsRead(id: targetID)
             } else if selectedAnnouncementID == nil {
                 selectedAnnouncementID = filteredAnnouncements.first?.id
                 store.selectedAnnouncementID = selectedAnnouncementID
+                if let firstID = selectedAnnouncementID {
+                    store.markAnnouncementAsRead(id: firstID)
+                }
             }
         }
         .onChange(of: store.selectedAnnouncementID) { _, newID in
             if let id = newID, selectedAnnouncementID != id {
                 selectedAnnouncementID = id
+                store.markAnnouncementAsRead(id: id)
             }
         }
         .onChange(of: selectedAnnouncementID) { _, newID in
             if let id = newID {
-                store.selectedAnnouncementID = id
+                if store.selectedAnnouncementID != id {
+                    store.selectedAnnouncementID = id
+                }
+                store.markAnnouncementAsRead(id: id)
             }
         }
     }
@@ -212,7 +221,8 @@ public struct AnnouncementsView: View {
                             
                             if item.requiresAcknowledgment {
                                 let acked = item.acknowledgments.count
-                                if item.isAcknowledged {
+                                let isUserAcked = item.acknowledgments.contains(where: { $0.memberName == store.currentUser.name })
+                                if isUserAcked {
                                     Text("已读")
                                         .font(.system(size: 10, weight: .semibold))
                                         .foregroundColor(.green)
@@ -401,7 +411,7 @@ public struct AnnouncementsView: View {
         let unackedMembers = store.unacknowledgedMembers(for: item)
         let progress = totalMembers > 0 ? Double(ackedCount) / Double(totalMembers) : 0.0
         let isAuthor = (item.author == store.currentUser.name)
-        let currentUserAcked = item.isAcknowledged || item.acknowledgments.contains(where: { $0.memberName == store.currentUser.name })
+        let currentUserAcked = item.acknowledgments.contains(where: { $0.memberName == store.currentUser.name })
         
         return VStack(alignment: .leading, spacing: 14) {
             // Header with statistics and progress

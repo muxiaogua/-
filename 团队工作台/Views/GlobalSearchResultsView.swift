@@ -200,7 +200,7 @@ public struct GlobalSearchResultsView: View {
             // 2. News / Green Email Group
             if (selectedTab == .all || selectedTab == .news) && !matchedNews.isEmpty {
                 VStack(alignment: .leading, spacing: 10) {
-                    sectionHeader(title: "重要邮件与资讯", icon: "envelope.fill", count: matchedNews.count, color: .green)
+                    sectionHeader(title: "重要邮件", icon: "envelope.fill", count: matchedNews.count, color: .green)
                     
                     VStack(spacing: 10) {
                         ForEach(matchedNews) { article in
@@ -309,7 +309,8 @@ public struct GlobalSearchResultsView: View {
                     
                     HStack {
                         if item.requiresAcknowledgment {
-                            if item.isAcknowledged {
+                            let isUserAcked = item.acknowledgments.contains(where: { $0.memberName == store.currentUser.name })
+                            if isUserAcked {
                                 Label("已确认阅读", systemImage: "checkmark.circle.fill")
                                     .font(.system(size: 11.5, weight: .medium))
                                     .foregroundColor(.green)

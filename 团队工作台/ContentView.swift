@@ -38,6 +38,7 @@ public struct ContentView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(minWidth: 1080, minHeight: 700)
+        .navigationTitle("")
     }
     
     // MARK: - 1. Top Header Bar
@@ -160,24 +161,6 @@ public struct ContentView: View {
             
             // Right Side Action Icons
             HStack(spacing: 12) {
-                // Test Notification sound button
-                Button(action: {
-                    notificationService.sendLocalNotification(
-                        title: "🔔 团队工作台通知测试",
-                        subtitle: "系统提醒",
-                        body: "团队协同通知运行正常！"
-                    )
-                }) {
-                    Image(systemName: "speaker.wave.2.fill")
-                        .font(.system(size: 13))
-                        .foregroundColor(.secondary)
-                        .padding(6)
-                        .background(Color.secondary.opacity(0.08))
-                        .clipShape(Circle())
-                }
-                .buttonStyle(.plain)
-                .help("测试系统通知声音与横幅")
-                
                 // Settings button
                 Button(action: {
                     store.selectedNavigation = .settings
@@ -235,26 +218,26 @@ public struct ContentView: View {
             tabButton(title: "首页概览", icon: "square.grid.2x2.fill", item: .dashboard)
             
             tabButton(
-                title: "团队公告板",
+                title: "团队公告",
                 icon: "megaphone.fill",
                 item: .announcements,
-                badgeCount: store.unacknowledgedCount > 0 ? store.unacknowledgedCount : nil,
+                badgeCount: store.unreadAnnouncementsCount > 0 ? store.unreadAnnouncementsCount : nil,
                 badgeColor: .red
             )
             
             tabButton(
-                title: "重要邮件与资讯",
+                title: "重要邮件",
                 icon: "envelope.fill",
                 item: .news,
-                badgeCount: store.newsArticles.count > 0 ? store.newsArticles.count : nil,
-                badgeColor: .green
+                badgeCount: store.unreadNewsCount > 0 ? store.unreadNewsCount : nil,
+                badgeColor: .red
             )
             
             tabButton(
-                title: "常见知识FAQ",
+                title: "FAQ查询",
                 icon: "questionmark.bubble.fill",
                 item: .faq,
-                badgeCount: store.faqItems.count > 0 ? store.faqItems.count : nil,
+                badgeCount: nil,
                 badgeColor: .blue
             )
             
@@ -293,25 +276,28 @@ public struct ContentView: View {
         return Button(action: {
             store.selectedNavigation = item
         }) {
-            HStack(spacing: 6) {
+            HStack(spacing: 7) {
+                Image(systemName: icon)
+                    .font(.system(size: 14, weight: isSelected ? .semibold : .regular))
+                
                 Text(title)
-                    .font(.system(size: 13, weight: isSelected ? .bold : .regular))
+                    .font(.system(size: 14.5, weight: isSelected ? .bold : .medium))
                 
                 if let count = badgeCount {
                     Text("\(count)")
-                        .font(.system(size: 10, weight: .bold))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 1.5)
-                        .background(isSelected ? (badgeColor == .red ? Color.red : Color.accentColor) : Color.secondary.opacity(0.15))
-                        .foregroundColor(isSelected ? .white : .secondary)
+                        .font(.system(size: 11, weight: .bold))
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 2)
+                        .background(badgeColor == .red ? Color.red : Color.accentColor)
+                        .foregroundColor(.white)
                         .clipShape(Capsule())
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(isSelected ? Color.blue.opacity(0.12) : Color.clear)
-            .foregroundColor(isSelected ? Color.blue : Color.primary)
-            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 7.5)
+            .background(isSelected ? Color.blue.opacity(0.14) : Color.clear)
+            .foregroundColor(isSelected ? Color.blue : Color.primary.opacity(0.88))
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
         .buttonStyle(.plain)
     }

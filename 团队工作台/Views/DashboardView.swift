@@ -46,23 +46,23 @@ public struct DashboardView: View {
             GridItem(.flexible(), spacing: 14)
         ], spacing: 14) {
             miniStatCard(
-                title: "今日公告",
-                count: "\(store.announcements.count)",
-                badge: "公告",
+                title: "未读公告",
+                count: "\(store.todayUnreadAnnouncementsCount)",
+                badge: "今日",
                 color: Color.orange,
                 action: { store.selectedNavigation = .announcements }
             )
             
             miniStatCard(
-                title: "今日邮件",
-                count: "\(store.newsArticles.count)",
-                badge: "邮件",
+                title: "未读邮件",
+                count: "\(store.todayUnreadNewsCount)",
+                badge: "今日",
                 color: Color.green,
                 action: { store.selectedNavigation = .news }
             )
             
             miniStatCard(
-                title: "今日FAQ",
+                title: "知识FAQ",
                 count: "\(store.faqItems.count)",
                 badge: "FAQ",
                 color: Color.blue,
@@ -79,7 +79,7 @@ public struct DashboardView: View {
             
             miniStatCard(
                 title: "今日待领",
-                count: "\(store.unacknowledgedCount)",
+                count: "\(store.todayUnacknowledgedCount)",
                 badge: "待领",
                 color: Color(red: 0.90, green: 0.20, blue: 0.25),
                 action: { store.selectedNavigation = .announcements }
@@ -141,17 +141,13 @@ public struct DashboardView: View {
                     .font(.system(size: 15, weight: .bold))
                     .foregroundColor(.primary)
                 
-                Text("(置顶与最新发布规范)")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
-                
                 Spacer()
                 
                 Button(action: {
                     store.selectedNavigation = .announcements
                 }) {
                     HStack(spacing: 4) {
-                        Text("进入公告板")
+                        Text("进入团队公告")
                             .font(.system(size: 12, weight: .medium))
                         Image(systemName: "arrow.right")
                             .font(.system(size: 10, weight: .bold))
@@ -194,7 +190,7 @@ public struct DashboardView: View {
     
     private func announcementCard(for item: Announcement) -> some View {
         let isUrgent = item.priority == .urgent || item.isPinned
-        let isAcked = item.isAcknowledged || item.acknowledgments.contains(where: { $0.memberName == store.currentUser.name })
+        let isAcked = item.acknowledgments.contains(where: { $0.memberName == store.currentUser.name })
         
         return VStack(alignment: .leading, spacing: 10) {
             // Top Row (Badges & Date)
@@ -313,13 +309,9 @@ public struct DashboardView: View {
                     .fill(Color.green)
                     .frame(width: 8, height: 8)
                 
-                Text("重要邮件与资讯")
+                Text("重要邮件")
                     .font(.system(size: 15, weight: .bold))
                     .foregroundColor(.primary)
-                
-                Text("(AASP 业务资讯与工程简报)")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
                 
                 Spacer()
                 
@@ -327,7 +319,7 @@ public struct DashboardView: View {
                     store.selectedNavigation = .news
                 }) {
                     HStack(spacing: 4) {
-                        Text("查看全部资讯")
+                        Text("查看全部邮件")
                             .font(.system(size: 12, weight: .medium))
                         Image(systemName: "arrow.right")
                             .font(.system(size: 10, weight: .bold))
@@ -345,7 +337,7 @@ public struct DashboardView: View {
                         Image(systemName: "envelope.open")
                             .font(.system(size: 30))
                             .foregroundColor(.secondary.opacity(0.4))
-                        Text("暂无重要邮件与资讯")
+                        Text("暂无重要邮件")
                             .font(.system(size: 13))
                             .foregroundColor(.secondary)
                     }

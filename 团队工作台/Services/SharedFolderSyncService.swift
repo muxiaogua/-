@@ -50,6 +50,16 @@ public struct SharedCommentRecord: Codable, Identifiable {
     }
 }
 
+public struct SyncMetaRecord: Codable {
+    public var lastSyncTime: Date
+    public var syncedBy: String
+    
+    public init(lastSyncTime: Date = Date(), syncedBy: String = "") {
+        self.lastSyncTime = lastSyncTime
+        self.syncedBy = syncedBy
+    }
+}
+
 final public class SharedFolderSyncService: NSObject, ObservableObject, NSFilePresenter, @unchecked Sendable {
     public static let shared = SharedFolderSyncService()
     
@@ -191,7 +201,7 @@ final public class SharedFolderSyncService: NSObject, ObservableObject, NSFilePr
     
     private func createSubdirectoriesIfNeeded(at baseURL: URL) {
         let fileManager = FileManager.default
-        let subdirs = ["announcements", "acknowledgments", "news", "comments", "faq", "roster"]
+        let subdirs = ["announcements", "acknowledgments", "news", "comments", "faq", "roster", "permissions"]
         for sub in subdirs {
             let subURL = baseURL.appendingPathComponent(sub, isDirectory: true)
             if !fileManager.fileExists(atPath: subURL.path) {

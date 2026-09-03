@@ -465,7 +465,8 @@ public class MailSyncService: ObservableObject {
                 
                 DispatchQueue.main.async {
                     self?.isSyncing = false
-                    self?.lastSyncTime = Date()
+                    let now = Date()
+                    self?.lastSyncTime = now
                     
                     // Prune Green Email messages older than 1 year
                     store.newsArticles.removeAll { article in
@@ -474,6 +475,15 @@ public class MailSyncService: ObservableObject {
                     
                     store.newsArticles.sort { $0.publishDate > $1.publishDate }
                     store.saveData()
+                    
+                    // Save sync meta to shared folder if connected
+                    if let baseURL = SharedFolderSyncService.shared.sharedFolderURL, SharedFolderSyncService.shared.isConnected {
+                        let metaURL = baseURL.appendingPathComponent("news/sync_meta.json")
+                        let meta = SyncMetaRecord(lastSyncTime: now, syncedBy: store.currentUser.name)
+                        if let data = try? JSONEncoder().encode(meta) {
+                            try? data.write(to: metaURL)
+                        }
+                    }
                     
                     if newlyImportedCount > 0 {
                         self?.lastSyncResult = "同步完成！已成功发现并写入 \(newlyImportedCount) 封最新 Green Email。"
