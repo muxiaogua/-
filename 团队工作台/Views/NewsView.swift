@@ -311,19 +311,12 @@ public struct NewsView: View {
                         .font(.system(size: 13, weight: .medium))
                         .foregroundColor(.secondary)
                     
-                    HStack(spacing: 10) {
-                        Button("从邮件 App 提取") {
+                    if store.canCurrentUserSyncData {
+                        Button("从邮件 App 提取最新") {
                             triggerMailSync()
                         }
                         .font(.system(size: 12))
                         .buttonStyle(.borderedProminent)
-                        .controlSize(.small)
-                        
-                        Button("去手动起草") {
-                            store.selectedNavigation = .publish
-                        }
-                        .font(.system(size: 12))
-                        .buttonStyle(.bordered)
                         .controlSize(.small)
                     }
                     Spacer()

@@ -14,10 +14,20 @@ public struct SettingsView: View {
     @State private var showClearSuccessAlert = false
     @State private var showTestNotificationAlert = false
     @State private var showEditProfileSheet = false
+    @State private var showAddPermissionSheet = false
     
     // Edit Profile States
     @State private var editName = ""
     @State private var editAvatar = "person.crop.circle.fill.badge.checkmark"
+    
+    // Add Member Permission States
+    @State private var newMemberName = ""
+    @State private var newMemberIsAdmin = false
+    @State private var newMemberCanPublish = false
+    @State private var newMemberCanSync = false
+    
+    // Permissions Search & Filter
+    @State private var memberSearchText = ""
     
     private let availableAvatars = [
         "person.crop.circle.fill.badge.checkmark",
@@ -51,16 +61,19 @@ public struct SettingsView: View {
                 // 1. My Profile Section
                 userProfileSection
                 
-                // 2. iCloud Shared Folder Sync Section
+                // 2. Team Permissions Management (RBAC)
+                teamPermissionsSection
+                
+                // 3. iCloud Shared Folder Sync Section
                 sharedFolderSection
                 
-                // 3. Notifications Settings Card
+                // 4. Notifications Settings Card
                 notificationSection
                 
-                // 4. Data Management Section
+                // 5. Data Management Section
                 dataManagementSection
                 
-                // 5. About App Section
+                // 6. About App Section
                 aboutSection
             }
             .padding(28)
@@ -88,12 +101,19 @@ public struct SettingsView: View {
         .sheet(isPresented: $showEditProfileSheet) {
             editProfileSheetView
         }
+        .sheet(isPresented: $showAddPermissionSheet) {
+            addPermissionSheetView
+        }
     }
     
     // MARK: - Sections
     
     private var userProfileSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        let isDefaultAdmin = store.isDefaultAdmin(name: store.currentUser.name)
+        let isAdmin = store.isCurrentUserAdmin
+        let perm = store.permission(for: store.currentUser.name)
+        
+        return VStack(alignment: .leading, spacing: 14) {
             Text("我的团队身份")
                 .font(.system(size: 15, weight: .bold))
             
@@ -105,20 +125,76 @@ public struct SettingsView: View {
                     .background(Color.accentColor.opacity(0.1))
                     .clipShape(Circle())
                 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 5) {
                     HStack(spacing: 8) {
                         Text(store.currentUser.name)
                             .font(.system(size: 17, weight: .bold))
                             .foregroundColor(.primary)
+                        
+                        if isDefaultAdmin {
+                            Label("超级管理员", systemImage: "crown.fill")
+                                .font(.system(size: 10.5, weight: .bold))
+                                .foregroundColor(Color.orange)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 2.5)
+                                .background(Color.orange.opacity(0.12))
+                                .clipShape(Capsule())
+                        } else if isAdmin {
+                            Label("管理员", systemImage: "shield.fill")
+                                .font(.system(size: 10.5, weight: .bold))
+                                .foregroundColor(Color.purple)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 2.5)
+                                .background(Color.purple.opacity(0.12))
+                                .clipShape(Capsule())
+                        } else {
+                            Label("普通成员", systemImage: "person.fill")
+                                .font(.system(size: 10.5, weight: .medium))
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 2.5)
+                                .background(Color.secondary.opacity(0.1))
+                                .clipShape(Capsule())
+                        }
                         
                         Label("在线", systemImage: "circle.fill")
                             .font(.system(size: 10))
                             .foregroundColor(.green)
                     }
                     
-                    Text("此名称将作为您在团队工作台中发布公告、确认已读及留言的唯一署名")
-                        .font(.system(size: 11.5))
-                        .foregroundColor(.secondary)
+                    if isDefaultAdmin {
+                        Text("系统默认超级管理员（享有全部公告发布、数据同步与全员权限管控能力）")
+                            .font(.system(size: 11.5))
+                            .foregroundColor(.secondary)
+                    } else if isAdmin {
+                        Text("团队管理员（享有全部公告发布、数据同步与成员权限分配能力）")
+                            .font(.system(size: 11.5))
+                            .foregroundColor(.secondary)
+                    } else {
+                        HStack(spacing: 6) {
+                            Text("权限：")
+                                .font(.system(size: 11.5))
+                                .foregroundColor(.secondary)
+                            
+                            Text(perm.canPublishAnnouncements ? "✓ 发布公告" : "✕ 发布公告")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(perm.canPublishAnnouncements ? .green : .secondary)
+                            
+                            Text("·")
+                                .foregroundColor(.secondary)
+                            
+                            Text(perm.canSyncData ? "✓ 数据同步" : "✕ 数据同步")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(perm.canSyncData ? .green : .secondary)
+                            
+                            Text("·")
+                                .foregroundColor(.secondary)
+                            
+                            Text("✓ 查看阅读 & 讨论留言")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(.green)
+                        }
+                    }
                 }
                 
                 Spacer()
@@ -224,11 +300,11 @@ public struct SettingsView: View {
                 
                 Button("保存修改") {
                     let name = editName.trimmingCharacters(in: .whitespaces)
-                    guard !name.isEmpty else { return }
-                    store.updateCurrentUser(
-                        name: name,
-                        avatarSymbol: editAvatar
-                    )
+                    if !name.isEmpty {
+                        store.currentUser.name = name
+                        store.currentUser.avatarSymbol = editAvatar
+                        store.saveData()
+                    }
                     showEditProfileSheet = false
                 }
                 .buttonStyle(.borderedProminent)
@@ -239,6 +315,370 @@ public struct SettingsView: View {
         }
         .padding(26)
         .frame(width: 460, height: 350)
+        .background(Color(NSColor.windowBackgroundColor))
+    }
+    
+    // MARK: - Team Permissions Section (RBAC)
+    
+    private var allMembersToManage: [(name: String, avatar: String)] {
+        var seen = Set<String>()
+        var list: [(name: String, avatar: String)] = []
+        
+        // 1. Super Admins first
+        for admin in store.permissionConfig.defaultAdmins {
+            let clean = admin.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !clean.isEmpty && !seen.contains(clean) {
+                seen.insert(clean)
+                let avatar = store.teamMembers.first(where: { $0.name == clean })?.avatarSymbol ?? "crown.fill"
+                list.append((name: clean, avatar: avatar))
+            }
+        }
+        
+        // 2. Discovered team members
+        for member in store.teamMembers {
+            let clean = member.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !clean.isEmpty && !seen.contains(clean) && !WorkbenchStore.mockNamesBlocklist.contains(clean) {
+                seen.insert(clean)
+                list.append((name: clean, avatar: member.avatarSymbol))
+            }
+        }
+        
+        // 3. Custom permissions configured members
+        for (name, _) in store.permissionConfig.permissions {
+            let clean = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !clean.isEmpty && !seen.contains(clean) && !WorkbenchStore.mockNamesBlocklist.contains(clean) {
+                seen.insert(clean)
+                list.append((name: clean, avatar: "person.crop.circle.fill"))
+            }
+        }
+        
+        // Filter by search text
+        let query = memberSearchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if !query.isEmpty {
+            list = list.filter { $0.name.lowercased().contains(query) }
+        }
+        
+        return list
+    }
+    
+    private var teamPermissionsSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text("全员权限管理 (RBAC)")
+                            .font(.system(size: 15, weight: .bold))
+                        
+                        Text("iCloud 实时分发")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(.accentColor)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.accentColor.opacity(0.12))
+                            .clipShape(Capsule())
+                    }
+                    
+                    Text("默认 Jason 和 Beauty 拥有最高权限，新加入成员默认为普通成员。管理员可在此自由分配与回收权限")
+                        .font(.system(size: 11.5))
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                if store.isCurrentUserAdmin {
+                    Button(action: {
+                        newMemberName = ""
+                        newMemberIsAdmin = false
+                        newMemberCanPublish = true
+                        newMemberCanSync = false
+                        showAddPermissionSheet = true
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "person.badge.plus")
+                            Text("添加成员预设权限")
+                        }
+                        .font(.system(size: 12, weight: .medium))
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                }
+            }
+            
+            if !store.isCurrentUserAdmin {
+                // Non-admin view
+                HStack(spacing: 12) {
+                    Image(systemName: "lock.shield")
+                        .font(.system(size: 24))
+                        .foregroundColor(.secondary)
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("您当前为普通成员")
+                            .font(.system(size: 13, weight: .semibold))
+                        Text("团队管理员为 Jason / Beauty。如需开通团队公告发布或数据同步权限，请联系管理员在上方管理面板中授权。")
+                            .font(.system(size: 11.5))
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                }
+                .padding(14)
+                .background(Color(NSColor.controlBackgroundColor))
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(Color.secondary.opacity(0.12), lineWidth: 1)
+                )
+            } else {
+                // Admin management view
+                VStack(spacing: 12) {
+                    // Search bar for members
+                    HStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                        TextField("搜索成员姓名快速配置权限...", text: $memberSearchText)
+                            .textFieldStyle(.plain)
+                            .font(.system(size: 12.5))
+                        if !memberSearchText.isEmpty {
+                            Button(action: { memberSearchText = "" }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .background(Color(NSColor.controlBackgroundColor))
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(Color.secondary.opacity(0.15), lineWidth: 1)
+                    )
+                    
+                    // Members list
+                    VStack(spacing: 8) {
+                        ForEach(allMembersToManage, id: \.name) { member in
+                            memberPermissionRow(name: member.name, avatar: member.avatar)
+                        }
+                    }
+                }
+                .padding(16)
+                .background(Color(NSColor.controlBackgroundColor))
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(Color.secondary.opacity(0.12), lineWidth: 1)
+                )
+            }
+        }
+    }
+    
+    private func memberPermissionRow(name: String, avatar: String) -> some View {
+        let isDefaultAdmin = store.isDefaultAdmin(name: name)
+        let currentPerm = store.permission(for: name)
+        
+        return HStack(spacing: 12) {
+            Image(systemName: isDefaultAdmin ? "crown.fill" : avatar)
+                .font(.system(size: 18))
+                .foregroundColor(isDefaultAdmin ? .orange : (currentPerm.isAdmin ? .purple : .accentColor))
+                .frame(width: 34, height: 34)
+                .background((isDefaultAdmin ? Color.orange : (currentPerm.isAdmin ? Color.purple : Color.accentColor)).opacity(0.12))
+                .clipShape(Circle())
+            
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(name)
+                        .font(.system(size: 13.5, weight: .bold))
+                    
+                    if name == store.currentUser.name {
+                        Text("(当前登录账号)")
+                            .font(.system(size: 10.5))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                if isDefaultAdmin {
+                    Text("系统默认最高权限，不可更改")
+                        .font(.system(size: 11))
+                        .foregroundColor(.orange)
+                } else if currentPerm.isAdmin {
+                    Text("管理员权限（拥有全部管理、发布与同步能力）")
+                        .font(.system(size: 11))
+                        .foregroundColor(.purple)
+                } else {
+                    HStack(spacing: 4) {
+                        Text(currentPerm.canPublishAnnouncements ? "✓ 发布公告" : "✕ 发布公告")
+                            .font(.system(size: 10.5))
+                            .foregroundColor(currentPerm.canPublishAnnouncements ? .green : .secondary)
+                        Text("·")
+                            .foregroundColor(.secondary)
+                        Text(currentPerm.canSyncData ? "✓ 数据同步" : "✕ 数据同步")
+                            .font(.system(size: 10.5))
+                            .foregroundColor(currentPerm.canSyncData ? .green : .secondary)
+                    }
+                }
+            }
+            
+            Spacer()
+            
+            if isDefaultAdmin {
+                Label("超级管理员", systemImage: "crown.fill")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(.orange)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Color.orange.opacity(0.12))
+                    .clipShape(Capsule())
+            } else {
+                HStack(spacing: 10) {
+                    // Quick Role Switch
+                    Picker("", selection: Binding(
+                        get: { currentPerm.isAdmin ? "admin" : "member" },
+                        set: { newRole in
+                            let isAdm = (newRole == "admin")
+                            store.updatePermission(
+                                for: name,
+                                isAdmin: isAdm,
+                                canPublishAnnouncements: isAdm || currentPerm.canPublishAnnouncements,
+                                canSyncData: isAdm || currentPerm.canSyncData
+                            )
+                        }
+                    )) {
+                        Text("普通成员").tag("member")
+                        Text("管理员").tag("admin")
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 140)
+                    
+                    if !currentPerm.isAdmin {
+                        // Granular checkboxes for regular members
+                        Toggle("发布公告", isOn: Binding(
+                            get: { currentPerm.canPublishAnnouncements },
+                            set: { val in
+                                store.updatePermission(
+                                    for: name,
+                                    isAdmin: false,
+                                    canPublishAnnouncements: val,
+                                    canSyncData: currentPerm.canSyncData
+                                )
+                            }
+                        ))
+                        .toggleStyle(.checkbox)
+                        .font(.system(size: 11))
+                        
+                        Toggle("数据同步", isOn: Binding(
+                            get: { currentPerm.canSyncData },
+                            set: { val in
+                                store.updatePermission(
+                                    for: name,
+                                    isAdmin: false,
+                                    canPublishAnnouncements: currentPerm.canPublishAnnouncements,
+                                    canSyncData: val
+                                )
+                            }
+                        ))
+                        .toggleStyle(.checkbox)
+                        .font(.system(size: 11))
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(Color(NSColor.windowBackgroundColor).opacity(0.6))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+    
+    // MARK: - Add Member Permission Sheet
+    
+    private var addPermissionSheetView: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            HStack {
+                HStack(spacing: 8) {
+                    Image(systemName: "person.badge.plus")
+                        .font(.system(size: 18))
+                        .foregroundColor(.accentColor)
+                    Text("添加新成员预设权限")
+                        .font(.system(size: 16, weight: .bold))
+                }
+                Spacer()
+                Button(action: { showAddPermissionSheet = false }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+            
+            Divider()
+            
+            VStack(alignment: .leading, spacing: 6) {
+                Text("成员姓名 / 称呼")
+                    .font(.system(size: 13, weight: .semibold))
+                TextField("请输入团队成员姓名（如：Alex）", text: $newMemberName)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 13))
+            }
+            
+            VStack(alignment: .leading, spacing: 10) {
+                Text("角色类型")
+                    .font(.system(size: 13, weight: .semibold))
+                
+                Picker("角色", selection: $newMemberIsAdmin) {
+                    Text("普通成员 (默认仅查看/留言)").tag(false)
+                    Text("管理员 (最高全权)").tag(true)
+                }
+                .pickerStyle(.radioGroup)
+            }
+            
+            if !newMemberIsAdmin {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("细粒度权限配置")
+                        .font(.system(size: 13, weight: .semibold))
+                    
+                    Toggle("允许发布团队公告", isOn: $newMemberCanPublish)
+                        .toggleStyle(.checkbox)
+                        .font(.system(size: 12.5))
+                    
+                    Toggle("允许触发邮件与知识库数据同步", isOn: $newMemberCanSync)
+                        .toggleStyle(.checkbox)
+                        .font(.system(size: 12.5))
+                }
+                .padding(12)
+                .background(Color(NSColor.controlBackgroundColor))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+            
+            Divider()
+            
+            HStack {
+                Spacer()
+                Button("取消") {
+                    showAddPermissionSheet = false
+                }
+                .keyboardShortcut(.cancelAction)
+                
+                Button("保存并授权") {
+                    let cleanName = newMemberName.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !cleanName.isEmpty else { return }
+                    
+                    store.updatePermission(
+                        for: cleanName,
+                        isAdmin: newMemberIsAdmin,
+                        canPublishAnnouncements: newMemberCanPublish || newMemberIsAdmin,
+                        canSyncData: newMemberCanSync || newMemberIsAdmin
+                    )
+                    
+                    showAddPermissionSheet = false
+                }
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
+                .disabled(newMemberName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+        .padding(26)
+        .frame(width: 460)
         .background(Color(NSColor.windowBackgroundColor))
     }
     

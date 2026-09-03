@@ -38,7 +38,11 @@ public struct PublishView: View {
                 
                 Divider()
                 
-                announcementForm
+                if store.canCurrentUserPublishAnnouncements {
+                    announcementForm
+                } else {
+                    noPermissionView
+                }
             }
             .padding(28)
         }
@@ -48,6 +52,45 @@ public struct PublishView: View {
         } message: {
             Text(alertMessage)
         }
+    }
+    
+    // MARK: - No Permission View
+    
+    private var noPermissionView: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "lock.shield.fill")
+                .font(.system(size: 48))
+                .foregroundColor(.orange)
+            
+            Text("暂无公告发布权限")
+                .font(.system(size: 18, weight: .bold))
+            
+            Text("您当前的身份为「普通成员」，仅支持查阅公告、确认已读及发表讨论。\n如需在团队工作台起草并向全员分发公告，请联系管理员（Jason 或 Beauty）为您开通权限。")
+                .font(.system(size: 13))
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .lineSpacing(4)
+                .frame(maxWidth: 480)
+            
+            HStack(spacing: 12) {
+                Label("管理员: Jason / Beauty", systemImage: "crown.fill")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.orange)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color.orange.opacity(0.1))
+                    .clipShape(Capsule())
+            }
+            .padding(.top, 8)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 60)
+        .background(Color(NSColor.controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(Color.secondary.opacity(0.12), lineWidth: 1)
+        )
     }
     
     // MARK: - Announcement Form

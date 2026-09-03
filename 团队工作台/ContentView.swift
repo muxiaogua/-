@@ -25,20 +25,36 @@ public struct ContentView: View {
             
             Divider()
             
-            // 2. Horizontal Navigation Tabs Bar
-            horizontalTabsBar
+            // 2. Primary Level 1 Navigation Tabs Bar
+            primaryCategoryTabsBar
                 .padding(.horizontal, 20)
-                .padding(.vertical, 8)
+                .padding(.vertical, 7)
                 .background(Color(NSColor.windowBackgroundColor).opacity(0.85))
+            
+            // 3. Secondary Level 2 Sub-Menu Pills Bar (Visible for categories with sub-items)
+            if store.selectedCategory != .dashboard && !store.selectedCategory.subItems.isEmpty {
+                Divider()
+                secondarySubMenuBar
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 6)
+                    .background(Color(NSColor.controlBackgroundColor).opacity(0.6))
+            }
             
             Divider()
             
-            // 3. Main Content View Area
+            // 4. Main Content View Area
             mainContentArea
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(minWidth: 1080, minHeight: 700)
         .navigationTitle("")
+        .onChange(of: store.selectedNavigation) { _, newNav in
+            if let nav = newNav, let cat = nav.category {
+                if store.selectedCategory != cat {
+                    store.selectedCategory = cat
+                }
+            }
+        }
     }
     
     // MARK: - 1. Top Header Bar
@@ -175,73 +191,75 @@ public struct ContentView: View {
                 .buttonStyle(.plain)
                 .help("偏好设置与云端同步管理")
                 
-                // Publish Dropdown Menu Button
-                Menu {
+                // Publish Button (Only visible for members with announcement publishing permission)
+                if store.canCurrentUserPublishAnnouncements {
                     Button {
                         store.selectedNavigation = .publish
                     } label: {
-                        Label("发布团队公告", systemImage: "megaphone.fill")
+                        HStack(spacing: 6) {
+                            Image(systemName: "plus")
+                                .font(.system(size: 11, weight: .bold))
+                            Text("发布公告")
+                                .font(.system(size: 12.5, weight: .semibold))
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
                     }
-                    
-                    Divider()
-                    
-                    Button {
-                        store.selectedNavigation = .faq
-                    } label: {
-                        Label("新增 FAQ 问答", systemImage: "questionmark.bubble.fill")
-                    }
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "plus")
-                            .font(.system(size: 11, weight: .bold))
-                        Text("我要发布")
-                            .font(.system(size: 12.5, weight: .semibold))
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 9, weight: .bold))
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                    .buttonStyle(.plain)
+                    .help("起草并向全员发布团队公告")
                 }
-                .buttonStyle(.plain)
             }
         }
     }
     
-    // MARK: - 2. Horizontal Navigation Tabs Bar
+    // MARK: - 2. Primary Level 1 Navigation Tabs Bar
     
-    private var horizontalTabsBar: some View {
-        HStack(spacing: 8) {
-            // Main Tabs
-            tabButton(title: "首页概览", icon: "square.grid.2x2.fill", item: .dashboard)
+    private var primaryCategoryTabsBar: some View {
+        HStack(spacing: 6) {
+            ForEach(AppNavigationCategory.allCases) { cat in
+                let isSelected = (store.selectedCategory == cat)
+                let badge = badgeCountForCategory(cat)
+                
+                Button(action: {
+                    store.selectedCategory = cat
+                    if cat == .dashboard {
+                        store.selectedNavigation = .dashboard
+                    } else if let firstSub = cat.subItems.first {
+                        if !cat.subItems.contains(where: { $0 == store.selectedNavigation }) {
+                            store.selectedNavigation = firstSub
+                        }
+                    }
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: cat.iconName)
+                            .font(.system(size: 13.5, weight: isSelected ? .semibold : .regular))
+                        
+                        Text(cat.rawValue)
+                            .font(.system(size: 14, weight: isSelected ? .bold : .medium))
+                        
+                        if let count = badge, count > 0 {
+                            Text("\(count)")
+                                .font(.system(size: 10.5, weight: .bold))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 1.5)
+                                .background(Color.red)
+                                .foregroundColor(.white)
+                                .clipShape(Capsule())
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6.5)
+                    .background(isSelected ? Color.blue.opacity(0.14) : Color.clear)
+                    .foregroundColor(isSelected ? Color.blue : Color.primary.opacity(0.88))
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
             
-            tabButton(
-                title: "团队公告",
-                icon: "megaphone.fill",
-                item: .announcements,
-                badgeCount: store.unreadAnnouncementsCount > 0 ? store.unreadAnnouncementsCount : nil,
-                badgeColor: .red
-            )
-            
-            tabButton(
-                title: "重要邮件",
-                icon: "envelope.fill",
-                item: .news,
-                badgeCount: store.unreadNewsCount > 0 ? store.unreadNewsCount : nil,
-                badgeColor: .red
-            )
-            
-            tabButton(
-                title: "FAQ查询",
-                icon: "questionmark.bubble.fill",
-                item: .faq,
-                badgeCount: nil,
-                badgeColor: .blue
-            )
-            
-            if store.selectedNavigation == .publish {
+            if store.canCurrentUserPublishAnnouncements && store.selectedNavigation == .publish {
                 tabButton(title: "发布中心", icon: "square.and.pencil", item: .publish)
             }
             
@@ -252,49 +270,126 @@ public struct ContentView: View {
             Spacer()
             
             // Right Side Cloud Status indicator
-            HStack(spacing: 4) {
-                Text(sharedFolderSync.isConnected ? "云端多端同步中" : "单机模式")
-                    .font(.system(size: 11.5))
-                    .foregroundColor(.secondary)
-                
-                Circle()
-                    .fill(sharedFolderSync.isConnected ? Color.green : Color.orange)
-                    .frame(width: 6, height: 6)
+            if store.selectedCategory.isTeamSynced {
+                HStack(spacing: 4) {
+                    Text(sharedFolderSync.isConnected ? "全员云端同步中" : "单机模式")
+                        .font(.system(size: 11.5))
+                        .foregroundColor(.secondary)
+                    
+                    Circle()
+                        .fill(sharedFolderSync.isConnected ? Color.green : Color.orange)
+                        .frame(width: 6, height: 6)
+                }
+            } else {
+                HStack(spacing: 4) {
+                    Image(systemName: "lock.shield.fill")
+                        .font(.system(size: 10))
+                        .foregroundColor(.blue)
+                    Text("个人本地私有")
+                        .font(.system(size: 11.5, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
             }
+        }
+    }
+    
+    private func badgeCountForCategory(_ cat: AppNavigationCategory) -> Int? {
+        switch cat {
+        case .teamShare:
+            return store.unreadAnnouncementsCount > 0 ? store.unreadAnnouncementsCount : nil
+        case .queryCenter:
+            return store.unreadNewsCount > 0 ? store.unreadNewsCount : nil
+        default:
+            return nil
+        }
+    }
+    
+    // MARK: - 3. Secondary Level 2 Sub-Menu Pills Bar
+    
+    private var secondarySubMenuBar: some View {
+        HStack(spacing: 8) {
+            HStack(spacing: 4) {
+                Image(systemName: store.selectedCategory.iconName)
+                    .font(.system(size: 11))
+                Text(store.selectedCategory.rawValue)
+                    .font(.system(size: 12, weight: .semibold))
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 9, weight: .bold))
+            }
+            .foregroundColor(.secondary)
+            .padding(.trailing, 4)
+            
+            ForEach(store.selectedCategory.subItems) { subItem in
+                let isSelected = (store.selectedNavigation == subItem)
+                let subBadge = badgeCountForSubItem(subItem)
+                
+                Button(action: {
+                    store.selectedNavigation = subItem
+                }) {
+                    HStack(spacing: 5) {
+                        Image(systemName: subItem.iconName)
+                            .font(.system(size: 11))
+                        
+                        Text(subItem.rawValue)
+                            .font(.system(size: 12.5, weight: isSelected ? .semibold : .regular))
+                        
+                        if let count = subBadge, count > 0 {
+                            Text("\(count)")
+                                .font(.system(size: 9.5, weight: .bold))
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 1)
+                                .background(Color.red)
+                                .foregroundColor(.white)
+                                .clipShape(Capsule())
+                        }
+                    }
+                    .padding(.horizontal, 11)
+                    .padding(.vertical, 4.5)
+                    .background(isSelected ? Color.accentColor : Color(NSColor.controlBackgroundColor))
+                    .foregroundColor(isSelected ? Color.white : Color.primary)
+                    .clipShape(Capsule())
+                    .overlay(
+                        Capsule()
+                            .stroke(isSelected ? Color.clear : Color.secondary.opacity(0.18), lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+            
+            Spacer()
+        }
+    }
+    
+    private func badgeCountForSubItem(_ item: AppNavigationItem) -> Int? {
+        switch item {
+        case .announcements:
+            return store.unreadAnnouncementsCount > 0 ? store.unreadAnnouncementsCount : nil
+        case .news:
+            return store.unreadNewsCount > 0 ? store.unreadNewsCount : nil
+        default:
+            return nil
         }
     }
     
     private func tabButton(
         title: String,
         icon: String,
-        item: AppNavigationItem,
-        badgeCount: Int? = nil,
-        badgeColor: Color = .gray
+        item: AppNavigationItem
     ) -> some View {
         let isSelected = (store.selectedNavigation == item)
         
         return Button(action: {
             store.selectedNavigation = item
         }) {
-            HStack(spacing: 7) {
+            HStack(spacing: 6) {
                 Image(systemName: icon)
-                    .font(.system(size: 14, weight: isSelected ? .semibold : .regular))
+                    .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
                 
                 Text(title)
-                    .font(.system(size: 14.5, weight: isSelected ? .bold : .medium))
-                
-                if let count = badgeCount {
-                    Text("\(count)")
-                        .font(.system(size: 11, weight: .bold))
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 2)
-                        .background(badgeColor == .red ? Color.red : Color.accentColor)
-                        .foregroundColor(.white)
-                        .clipShape(Capsule())
-                }
+                    .font(.system(size: 13.5, weight: isSelected ? .bold : .medium))
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 7.5)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5.5)
             .background(isSelected ? Color.blue.opacity(0.14) : Color.clear)
             .foregroundColor(isSelected ? Color.blue : Color.primary.opacity(0.88))
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
@@ -302,7 +397,7 @@ public struct ContentView: View {
         .buttonStyle(.plain)
     }
     
-    // MARK: - 3. Main Content View Area
+    // MARK: - 4. Main Content View Area
     
     private var mainContentArea: some View {
         Group {
@@ -312,12 +407,42 @@ public struct ContentView: View {
                 switch store.selectedNavigation {
                 case .dashboard, .none:
                     DashboardView()
+                    
+                // 团队共享
                 case .announcements:
                     AnnouncementsView()
+                case .teamShifts:
+                    TeamShiftsView()
+                    
+                // 个人中心
+                case .shifts:
+                    ShiftsView()
+                case .leaveRequest:
+                    PlaceholderReservedView(title: "我要请假", icon: "airplane.departure", subtitle: "个人假期申请与请假进度追踪功能正在规划中，即将上线！")
+                case .myStats:
+                    PlaceholderReservedView(title: "数据统计", icon: "chart.bar.xaxis", subtitle: "个人业务指标与工作数据分析看板正在建设中，即将上线！")
+                    
+                // 查询中心
                 case .news:
                     NewsView()
                 case .faq:
                     FAQView()
+                case .priceQuery:
+                    PlaceholderReservedView(title: "价格查询", icon: "tag.fill", subtitle: "官方配件与维修服务价格速查工具正在规划中，即将上线！")
+                    
+                // 互帮互助
+                case .caseAssistance:
+                    PlaceholderReservedView(title: "案例协助", icon: "bubble.left.and.exclamationmark.bubble.right.fill", subtitle: "疑难案例团队求助与协同讨论专区正在建设中，即将上线！")
+                case .sharedKnowledge:
+                    PlaceholderReservedView(title: "共享知识库", icon: "books.vertical.fill", subtitle: "团队沉淀知识库与经验总结专区正在规划中，即将上线！")
+                    
+                // 小工具
+                case .luckyWheel:
+                    PlaceholderReservedView(title: "幸运大转盘", icon: "gift.fill", subtitle: "团队趣味抽奖与决策小工具正在开发中，即将上线！")
+                case .dateCalculator:
+                    PlaceholderReservedView(title: "日期计算器", icon: "calendar.badge.plus", subtitle: "保修期与工作日跨度快速计算工具正在开发中，即将上线！")
+                    
+                // 特殊页面
                 case .publish:
                     PublishView()
                 case .settings:

@@ -195,7 +195,7 @@ public struct AnnouncementsView: View {
                     Text(searchText.isEmpty ? "暂无团队公告" : "未找到匹配的公告")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundColor(.secondary)
-                    if searchText.isEmpty {
+                    if searchText.isEmpty && store.canCurrentUserPublishAnnouncements {
                         Button("去起草公告") {
                             store.selectedNavigation = .publish
                         }

@@ -48,7 +48,7 @@ public struct HTMLMailView: NSViewRepresentable {
                 font-size: 14px;
                 line-height: 1.6;
                 color: CanvasText;
-                background-color: transparent;
+                background-color: transparent !important;
                 word-wrap: break-word;
                 -webkit-font-smoothing: antialiased;
             }
@@ -57,6 +57,11 @@ public struct HTMLMailView: NSViewRepresentable {
                 text-decoration: underline !important;
                 cursor: pointer;
             }
+            @media (prefers-color-scheme: dark) {
+                a {
+                    color: #0A84FF !important;
+                }
+            }
             table {
                 max-width: 100% !important;
                 box-sizing: border-box !important;
@@ -64,6 +69,19 @@ public struct HTMLMailView: NSViewRepresentable {
             img {
                 max-width: 100% !important;
                 height: auto !important;
+            }
+            
+            /* High-contrast Red highlights */
+            .apple-mail-highlight-red {
+                color: #D70015 !important;
+            }
+            @media (prefers-color-scheme: dark) {
+                .apple-mail-highlight-red {
+                    color: #FF453A !important;
+                }
+                .apple-mail-dark-text-adapted {
+                    color: #F2F2F7 !important;
+                }
             }
             
             /* Suppress all horizontal lines and decorative rules */
@@ -112,12 +130,64 @@ public struct HTMLMailView: NSViewRepresentable {
             }
         </style>
         <script>
-            function cleanGreenDividersAndBanners() {
+            function adaptMailContent() {
+                const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                
                 // 1. Remove all HR tags
                 document.querySelectorAll("hr").forEach(el => el.remove());
                 
-                // 2. Scan all elements to detect green backgrounds, green borders, or thin divider strips
                 const allElements = document.querySelectorAll("*");
+                
+                function parseRGB(c) {
+                    if (!c || c === "transparent" || c.startsWith("rgba(0, 0, 0, 0)")) return null;
+                    const match = c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+                    if (match) {
+                        return { r: parseInt(match[1]), g: parseInt(match[2]), b: parseInt(match[3]) };
+                    }
+                    return null;
+                }
+                
+                function isGreenColor(c) {
+                    const rgb = parseRGB(c);
+                    if (rgb) {
+                        if (rgb.g > 60 && rgb.g > rgb.r * 1.15 && rgb.g > rgb.b * 1.15) return true;
+                        if (rgb.g > 90 && rgb.r < 120 && rgb.b < 120) return true;
+                    }
+                    return false;
+                }
+                
+                function isRedColor(str, compColor) {
+                    if (str) {
+                        const s = str.toLowerCase();
+                        if (s.includes('red') || s.includes('#ff') || s.includes('#ee') || s.includes('#dd') || s.includes('#cc') || s.includes('#c0') || s.includes('#d0') || s.includes('#e0')) return true;
+                    }
+                    const rgb = parseRGB(compColor || str);
+                    if (rgb) {
+                        if (rgb.r > 130 && rgb.r > rgb.g * 1.4 && rgb.r > rgb.b * 1.4) return true;
+                    }
+                    return false;
+                }
+                
+                function isDarkOrBlackColor(str, compColor) {
+                    if (str) {
+                        const s = str.toLowerCase().trim();
+                        if (s === 'black' || s === '#000' || s === '#000000' || s === '#111' || s === '#222' || s === '#333' || s === '#444' || s === '#1c1c1e' || s === '#2c2c2e') return true;
+                    }
+                    const rgb = parseRGB(compColor || str);
+                    if (rgb) {
+                        if (rgb.r < 80 && rgb.g < 80 && rgb.b < 80) return true;
+                    }
+                    return false;
+                }
+                
+                function isLightOrWhiteBackground(c) {
+                    const rgb = parseRGB(c);
+                    if (rgb) {
+                        if (rgb.r > 210 && rgb.g > 210 && rgb.b > 210) return true;
+                    }
+                    return false;
+                }
+                
                 allElements.forEach(el => {
                     if (el.tagName === "BODY" || el.tagName === "HTML") return;
                     
@@ -128,18 +198,7 @@ public struct HTMLMailView: NSViewRepresentable {
                     const bl = style.borderLeftColor;
                     const br = style.borderRightColor;
                     
-                    function isGreenColor(c) {
-                        if (!c || c === "transparent" || c.startsWith("rgba(0, 0, 0, 0)")) return false;
-                        const match = c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-                        if (match) {
-                            const r = parseInt(match[1]), g = parseInt(match[2]), b = parseInt(match[3]);
-                            // Detect shades of green
-                            if (g > 60 && g > r * 1.15 && g > b * 1.15) return true;
-                            if (g > 90 && r < 120 && b < 120) return true;
-                        }
-                        return false;
-                    }
-                    
+                    // Remove green banner boxes / dividers
                     if (isGreenColor(bg)) {
                         if (el.offsetHeight <= 15 || el.offsetWidth > 400 || el.textContent.trim().length === 0) {
                             el.remove();
@@ -148,14 +207,43 @@ public struct HTMLMailView: NSViewRepresentable {
                             el.style.backgroundColor = "transparent";
                         }
                     }
-                    
                     if (isGreenColor(bt)) el.style.borderTop = "none";
                     if (isGreenColor(bb)) el.style.borderBottom = "none";
                     if (isGreenColor(bl)) el.style.borderLeft = "none";
                     if (isGreenColor(br)) el.style.borderRight = "none";
+                    
+                    // Color adaptations
+                    if (el.tagName !== "A" && el.tagName !== "IMG") {
+                        const inlineColor = el.style ? el.style.color : '';
+                        const fontColor = el.getAttribute ? el.getAttribute('color') : '';
+                        const compColor = style.color;
+                        
+                        if (isRedColor(inlineColor, compColor) || isRedColor(fontColor, compColor)) {
+                            el.classList.add('apple-mail-highlight-red');
+                            if (el.style) el.style.removeProperty('color');
+                            if (el.removeAttribute) el.removeAttribute('color');
+                        } else if (isDark) {
+                            if (isDarkOrBlackColor(inlineColor, compColor) || isDarkOrBlackColor(fontColor, compColor)) {
+                                el.classList.add('apple-mail-dark-text-adapted');
+                                if (el.style) el.style.removeProperty('color');
+                                if (el.removeAttribute) el.removeAttribute('color');
+                            }
+                            if (isLightOrWhiteBackground(bg)) {
+                                el.style.backgroundColor = 'transparent';
+                            }
+                            if (el.getAttribute && el.getAttribute('bgcolor')) {
+                                const bgAttr = el.getAttribute('bgcolor');
+                                if (bgAttr === 'white' || bgAttr === '#ffffff' || bgAttr === '#FFF' || bgAttr === '#FFFFFF') {
+                                    el.removeAttribute('bgcolor');
+                                }
+                            }
+                        } else {
+                            el.classList.remove('apple-mail-dark-text-adapted');
+                        }
+                    }
                 });
                 
-                // 3. Strip trailing empty containers / dividers at the bottom
+                // Strip trailing empty containers
                 while (document.body && document.body.lastElementChild) {
                     const last = document.body.lastElementChild;
                     if (last.offsetHeight === 0 || last.textContent.trim().length === 0 || last.tagName === "HR" || last.tagName === "BR") {
@@ -167,13 +255,17 @@ public struct HTMLMailView: NSViewRepresentable {
             }
             
             if (document.readyState === "loading") {
-                document.addEventListener("DOMContentLoaded", cleanGreenDividersAndBanners);
+                document.addEventListener("DOMContentLoaded", adaptMailContent);
             } else {
-                cleanGreenDividersAndBanners();
+                adaptMailContent();
             }
-            window.addEventListener("load", cleanGreenDividersAndBanners);
-            setTimeout(cleanGreenDividersAndBanners, 200);
-            setTimeout(cleanGreenDividersAndBanners, 600);
+            window.addEventListener("load", adaptMailContent);
+            setTimeout(adaptMailContent, 200);
+            setTimeout(adaptMailContent, 600);
+            
+            if (window.matchMedia) {
+                window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', adaptMailContent);
+            }
         </script>
         """##
         

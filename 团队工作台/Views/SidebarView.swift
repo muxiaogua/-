@@ -44,8 +44,17 @@ public struct SidebarView: View {
         switch item {
         case .dashboard: return .blue
         case .announcements: return .red
+        case .teamShifts: return .indigo
+        case .shifts: return .purple
+        case .leaveRequest: return .orange
+        case .myStats: return .teal
         case .news: return .green
-        case .faq: return .teal
+        case .faq: return .blue
+        case .priceQuery: return .yellow
+        case .caseAssistance: return .pink
+        case .sharedKnowledge: return .brown
+        case .luckyWheel: return .red
+        case .dateCalculator: return .cyan
         case .publish: return .orange
         case .settings: return .gray
         }

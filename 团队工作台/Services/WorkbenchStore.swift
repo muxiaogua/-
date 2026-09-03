@@ -16,6 +16,7 @@ public class WorkbenchStore: ObservableObject {
     @Published public var currentUser: TeamMember = TeamMember.currentUser
     @Published public var searchText: String = ""
     @Published public var selectedNavigation: AppNavigationItem? = .dashboard
+    @Published public var selectedCategory: AppNavigationCategory = .dashboard
     @Published public var selectedNewsArticleID: UUID?
     @Published public var selectedAnnouncementID: UUID?
     @Published public var targetFAQItemID: UUID?
@@ -23,6 +24,8 @@ public class WorkbenchStore: ObservableObject {
     @Published public var readNewsArticleIDs: Set<UUID> = []
     @Published public var readAnnouncementIDs: Set<UUID> = []
     @Published public var permissionConfig: TeamPermissionConfig = TeamPermissionConfig()
+    @Published public var currentMemberShiftSchedule: MemberShiftSchedule = MemberShiftSchedule()
+    @Published public var teamShiftSchedules: [MemberShiftSchedule] = []
     
     private let announcementsStorageKey = "workbench_announcements_v3"
     private let newsStorageKey = "workbench_news_v3"
@@ -32,6 +35,7 @@ public class WorkbenchStore: ObservableObject {
     private let readNewsStorageKey = "workbench_read_news_ids_v1"
     private let readAnnouncementsStorageKey = "workbench_read_announcements_ids_v1"
     private let permissionsStorageKey = "workbench_permissions_v1"
+    private let shiftsStorageKeyPrefix = "workbench_shift_schedule_v1_"
     
     public init() {
         loadData()
@@ -134,10 +138,16 @@ public class WorkbenchStore: ObservableObject {
     
     // MARK: - Permissions & Role Management (RBAC)
     
+    public func isDefaultAdmin(name: String) -> Bool {
+        let clean = name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !clean.isEmpty else { return false }
+        return permissionConfig.defaultAdmins.contains { $0.lowercased() == clean }
+    }
+    
     public func permission(for memberName: String) -> MemberPermission {
         let name = memberName.trimmingCharacters(in: .whitespacesAndNewlines)
         // Default Super Admins (Jason and Beauty always have full permissions)
-        if permissionConfig.defaultAdmins.contains(name) {
+        if isDefaultAdmin(name: name) {
             return MemberPermission(
                 memberName: name,
                 isAdmin: true,
@@ -184,6 +194,11 @@ public class WorkbenchStore: ObservableObject {
         let name = memberName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return }
         
+        // Prevent modifying hardcoded default super admins
+        if isDefaultAdmin(name: name) {
+            return
+        }
+        
         let newPerm = MemberPermission(
             memberName: name,
             isAdmin: isAdmin,
@@ -195,6 +210,85 @@ public class WorkbenchStore: ObservableObject {
         permissionConfig.permissions[name] = newPerm
         permissionConfig.lastModifiedAt = Date()
         saveData()
+    }
+    
+    public func deletePermission(for memberName: String) {
+        let name = memberName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty, !isDefaultAdmin(name: name) else { return }
+        permissionConfig.permissions.removeValue(forKey: name)
+        permissionConfig.lastModifiedAt = Date()
+        saveData()
+    }
+    
+    // MARK: - Shift Schedule (Apple Shifts)
+    
+    public var todayDateString: String {
+        let df = DateFormatter()
+        df.dateFormat = "yyyy-MM-dd"
+        return df.string(from: Date())
+    }
+    
+    public var todayShift: DayShift? {
+        currentMemberShiftSchedule.days.first { $0.dateStr == todayDateString }
+    }
+    
+    public func saveShiftSchedule(_ schedule: MemberShiftSchedule) {
+        var updated = schedule
+        updated.updatedAt = Date()
+        self.currentMemberShiftSchedule = updated
+        
+        // 1. Save to personal local storage
+        let key = shiftsStorageKeyPrefix + currentUser.name
+        if let data = try? JSONEncoder().encode(updated) {
+            UserDefaults.standard.set(data, forKey: key)
+        }
+        
+        // 2. If user chose to share with team, upload to iCloud shared folder
+        if updated.isSharedToTeam {
+            syncMySharedScheduleToCloud(updated)
+        } else {
+            removeMySharedScheduleFromCloud()
+        }
+    }
+    
+    public func toggleShareScheduleToTeam(isShared: Bool) {
+        var updated = currentMemberShiftSchedule
+        updated.isSharedToTeam = isShared
+        updated.sharedAt = isShared ? Date() : nil
+        saveShiftSchedule(updated)
+    }
+    
+    private func syncMySharedScheduleToCloud(_ schedule: MemberShiftSchedule) {
+        guard let baseURL = SharedFolderSyncService.shared.sharedFolderURL, SharedFolderSyncService.shared.isConnected else { return }
+        let shiftsDir = baseURL.appendingPathComponent("shifts", isDirectory: true)
+        try? FileManager.default.createDirectory(at: shiftsDir, withIntermediateDirectories: true)
+        let fileURL = shiftsDir.appendingPathComponent("shift_\(currentUser.name).json")
+        if let data = try? JSONEncoder().encode(schedule) {
+            try? data.write(to: fileURL)
+        }
+    }
+    
+    private func removeMySharedScheduleFromCloud() {
+        guard let baseURL = SharedFolderSyncService.shared.sharedFolderURL, SharedFolderSyncService.shared.isConnected else { return }
+        let shiftsDir = baseURL.appendingPathComponent("shifts", isDirectory: true)
+        let fileURL = shiftsDir.appendingPathComponent("shift_\(currentUser.name).json")
+        if FileManager.default.fileExists(atPath: fileURL.path) {
+            try? FileManager.default.removeItem(at: fileURL)
+        }
+    }
+    
+    public func loadShiftSchedule(for memberName: String) {
+        let clean = memberName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty else { return }
+        
+        // Load from personal local storage
+        let key = shiftsStorageKeyPrefix + clean
+        if let data = UserDefaults.standard.data(forKey: key),
+           let schedule = try? JSONDecoder().decode(MemberShiftSchedule.self, from: data) {
+            self.currentMemberShiftSchedule = schedule
+        } else {
+            self.currentMemberShiftSchedule = MemberShiftSchedule(memberName: clean, updatedAt: Date(), days: [])
+        }
     }
     
     // MARK: - Actions: Read Status Tracking
@@ -512,6 +606,7 @@ public class WorkbenchStore: ObservableObject {
         }
         
         saveData()
+        loadShiftSchedule(for: newName)
     }
     
     public func migrateAuthor(from oldName: String, to newName: String) {
@@ -568,11 +663,14 @@ public class WorkbenchStore: ObservableObject {
         faqItems.removeAll()
         readNewsArticleIDs.removeAll()
         readAnnouncementIDs.removeAll()
+        currentMemberShiftSchedule = MemberShiftSchedule(memberName: currentUser.name, updatedAt: Date(), days: [])
+        
         UserDefaults.standard.removeObject(forKey: announcementsStorageKey)
         UserDefaults.standard.removeObject(forKey: newsStorageKey)
         UserDefaults.standard.removeObject(forKey: faqStorageKey)
         UserDefaults.standard.removeObject(forKey: readNewsStorageKey)
         UserDefaults.standard.removeObject(forKey: readAnnouncementsStorageKey)
+        UserDefaults.standard.removeObject(forKey: shiftsStorageKeyPrefix + currentUser.name)
         UserDefaults.standard.removeObject(forKey: "workbench_announcements_v1")
         UserDefaults.standard.removeObject(forKey: "workbench_news_v1")
         saveData()
@@ -846,6 +944,31 @@ public class WorkbenchStore: ObservableObject {
             self.announcements[i].acknowledgments.removeAll { Self.mockNamesBlocklist.contains($0.memberName) }
         }
         
+        // 7. Read Permissions
+        let permURL = baseURL.appendingPathComponent("permissions/permissions.json")
+        if let data = try? Data(contentsOf: permURL),
+           let config = try? decoder.decode(TeamPermissionConfig.self, from: data) {
+            self.permissionConfig = config
+            if let encoded = try? JSONEncoder().encode(config) {
+                UserDefaults.standard.set(encoded, forKey: permissionsStorageKey)
+            }
+        }
+        
+        // 8. Read Team Shared Shift Schedules
+        let shiftsDir = baseURL.appendingPathComponent("shifts", isDirectory: true)
+        var loadedTeamShifts: [MemberShiftSchedule] = []
+        if let files = try? fileManager.contentsOfDirectory(at: shiftsDir, includingPropertiesForKeys: nil) {
+            for file in files where file.pathExtension == "json" {
+                if let data = try? Data(contentsOf: file),
+                   let schedule = try? decoder.decode(MemberShiftSchedule.self, from: data) {
+                    if schedule.isSharedToTeam {
+                        loadedTeamShifts.append(schedule)
+                    }
+                }
+            }
+        }
+        self.teamShiftSchedules = loadedTeamShifts.sorted { $0.memberName < $1.memberName }
+        
         // Update local cache
         if let encodedAnnouncements = try? JSONEncoder().encode(announcements) {
             UserDefaults.standard.set(encodedAnnouncements, forKey: announcementsStorageKey)
@@ -876,12 +999,20 @@ public class WorkbenchStore: ObservableObject {
         UserDefaults.standard.removeObject(forKey: "workbench_team_members_v2")
         UserDefaults.standard.removeObject(forKey: "workbench_team_members_v3")
         
+        let permData = UserDefaults.standard.data(forKey: permissionsStorageKey)
+        if let data = permData, let decodedPerms = try? JSONDecoder().decode(TeamPermissionConfig.self, from: data) {
+            self.permissionConfig = decodedPerms
+        } else {
+            self.permissionConfig = TeamPermissionConfig()
+        }
+        
         let userData = UserDefaults.standard.data(forKey: currentUserStorageKey) ?? UserDefaults.standard.data(forKey: "workbench_current_user_v1")
         if let data = userData, let decodedUser = try? JSONDecoder().decode(TeamMember.self, from: data) {
             self.currentUser = decodedUser
         } else {
             self.currentUser = TeamMember.currentUser
         }
+        self.loadShiftSchedule(for: self.currentUser.name)
         
         let readNewsData = UserDefaults.standard.stringArray(forKey: readNewsStorageKey) ?? []
         self.readNewsArticleIDs = Set(readNewsData.compactMap { UUID(uuidString: $0) })
@@ -997,11 +1128,84 @@ public class WorkbenchStore: ObservableObject {
     }
 }
 
+public enum AppNavigationCategory: String, CaseIterable, Identifiable {
+    case dashboard = "首页概览"
+    case teamShare = "团队共享"
+    case personalCenter = "个人中心"
+    case queryCenter = "查询中心"
+    case mutualHelp = "互帮互助"
+    case tools = "小工具"
+    
+    public var id: String { rawValue }
+    
+    public var iconName: String {
+        switch self {
+        case .dashboard: return "square.grid.2x2.fill"
+        case .teamShare: return "person.2.fill"
+        case .personalCenter: return "person.crop.circle.fill"
+        case .queryCenter: return "magnifyingglass.circle.fill"
+        case .mutualHelp: return "hands.sparkles.fill"
+        case .tools: return "wrench.and.screwdriver.fill"
+        }
+    }
+    
+    public var isTeamSynced: Bool {
+        switch self {
+        case .dashboard, .teamShare, .queryCenter, .mutualHelp:
+            return true
+        case .personalCenter, .tools:
+            return false
+        }
+    }
+    
+    public var syncScopeBadge: String {
+        isTeamSynced ? "全员共享" : "本地私有"
+    }
+    
+    public var subItems: [AppNavigationItem] {
+        switch self {
+        case .dashboard:
+            return [.dashboard]
+        case .teamShare:
+            return [.announcements, .teamShifts]
+        case .personalCenter:
+            return [.shifts, .leaveRequest, .myStats]
+        case .queryCenter:
+            return [.news, .faq, .priceQuery]
+        case .mutualHelp:
+            return [.caseAssistance, .sharedKnowledge]
+        case .tools:
+            return [.luckyWheel, .dateCalculator]
+        }
+    }
+}
+
 public enum AppNavigationItem: String, CaseIterable, Identifiable {
     case dashboard = "首页概览"
+    
+    // 团队共享
     case announcements = "团队公告"
+    case teamShifts = "团队班表"
+    
+    // 个人中心
+    case shifts = "我的班表"
+    case leaveRequest = "我要请假"
+    case myStats = "数据统计"
+    
+    // 查询中心
     case news = "重要邮件"
     case faq = "FAQ查询"
+    case priceQuery = "价格查询"
+    
+    // 互帮互助
+    case caseAssistance = "案例协助"
+    case sharedKnowledge = "共享知识库"
+    
+    // 小工具
+    case luckyWheel = "幸运大转盘"
+    case dateCalculator = "日期计算器"
+    
+    // System Special
     case publish = "发布中心"
     case settings = "偏好设置"
     
@@ -1011,10 +1215,28 @@ public enum AppNavigationItem: String, CaseIterable, Identifiable {
         switch self {
         case .dashboard: return "square.grid.2x2.fill"
         case .announcements: return "megaphone.fill"
+        case .teamShifts: return "person.3.sequence.fill"
+        case .shifts: return "calendar.badge.clock"
+        case .leaveRequest: return "airplane.departure"
+        case .myStats: return "chart.bar.xaxis"
         case .news: return "envelope.fill"
         case .faq: return "questionmark.bubble.fill"
+        case .priceQuery: return "tag.fill"
+        case .caseAssistance: return "bubble.left.and.exclamationmark.bubble.right.fill"
+        case .sharedKnowledge: return "books.vertical.fill"
+        case .luckyWheel: return "gift.fill"
+        case .dateCalculator: return "calendar.badge.plus"
         case .publish: return "square.and.pencil"
         case .settings: return "gearshape.fill"
         }
+    }
+    
+    public var category: AppNavigationCategory? {
+        for cat in AppNavigationCategory.allCases {
+            if cat.subItems.contains(self) {
+                return cat
+            }
+        }
+        return nil
     }
 }

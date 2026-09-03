@@ -37,6 +37,7 @@ public struct FAQGroup: Identifiable {
 }
 
 public struct FAQView: View {
+    @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject var store: WorkbenchStore
     @ObservedObject var chorusSync = ChorusFAQSyncService.shared
     
@@ -248,8 +249,8 @@ public struct FAQView: View {
                         }
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
-                        .background(selectedDatabase == db ? Color(NSColor.controlBackgroundColor) : Color.clear)
-                        .foregroundColor(selectedDatabase == db ? .primary : .secondary)
+                        .background(selectedDatabase == db ? (colorScheme == .dark ? Color.accentColor.opacity(0.2) : Color(NSColor.controlBackgroundColor)) : Color.clear)
+                        .foregroundColor(selectedDatabase == db ? (colorScheme == .dark ? Color.white : .primary) : .secondary)
                         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                         .shadow(color: selectedDatabase == db ? Color.black.opacity(0.06) : Color.clear, radius: 2, x: 0, y: 1)
                     }
@@ -257,8 +258,12 @@ public struct FAQView: View {
                 }
             }
             .padding(4)
-            .background(Color(red: 0.84, green: 0.90, blue: 0.88).opacity(0.75))
+            .background(colorScheme == .dark ? Color(NSColor.controlBackgroundColor) : Color(red: 0.84, green: 0.90, blue: 0.88).opacity(0.75))
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(colorScheme == .dark ? Color.secondary.opacity(0.2) : Color.clear, lineWidth: 1)
+            )
             
             Spacer()
             
@@ -365,8 +370,8 @@ public struct FAQView: View {
                             .font(.system(size: 12.5, weight: isSelected ? .semibold : .regular))
                             .padding(.horizontal, 14)
                             .padding(.vertical, 6)
-                            .background(isSelected ? Color(NSColor.labelColor) : Color(NSColor.controlBackgroundColor))
-                            .foregroundColor(isSelected ? Color(NSColor.windowBackgroundColor) : Color.primary)
+                            .background(isSelected ? (colorScheme == .dark ? Color.white : Color(NSColor.labelColor)) : Color(NSColor.controlBackgroundColor))
+                            .foregroundColor(isSelected ? (colorScheme == .dark ? Color.black : Color(NSColor.windowBackgroundColor)) : Color.primary)
                             .clipShape(Capsule())
                             .overlay(
                                 Capsule()

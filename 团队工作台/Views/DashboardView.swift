@@ -35,7 +35,17 @@ public struct DashboardView: View {
         }
     }
     
-    // MARK: - 1. Top 5 Mini Summary Cards
+    // MARK: - 1. Top Mini Summary Cards
+    
+    private var todayShiftSummaryText: String {
+        if let shift = store.todayShift {
+            if shift.isOff {
+                return "休假"
+            }
+            return "\(shift.workStart)"
+        }
+        return "班表"
+    }
     
     private var topSummaryCardsRow: some View {
         LazyVGrid(columns: [
@@ -43,8 +53,17 @@ public struct DashboardView: View {
             GridItem(.flexible(), spacing: 14),
             GridItem(.flexible(), spacing: 14),
             GridItem(.flexible(), spacing: 14),
+            GridItem(.flexible(), spacing: 14),
             GridItem(.flexible(), spacing: 14)
         ], spacing: 14) {
+            miniStatCard(
+                title: "今日班次",
+                count: todayShiftSummaryText,
+                badge: "作息",
+                color: Color.purple,
+                action: { store.selectedNavigation = .shifts }
+            )
+            
             miniStatCard(
                 title: "未读公告",
                 count: "\(store.todayUnreadAnnouncementsCount)",
