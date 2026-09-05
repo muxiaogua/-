@@ -25,24 +25,15 @@ public struct ContentView: View {
             
             Divider()
             
-            // 2. Primary Level 1 Navigation Tabs Bar
-            primaryCategoryTabsBar
+            // 2. Primary Dropdown Navigation Menu Bar
+            primaryDropdownMenuBar
                 .padding(.horizontal, 20)
                 .padding(.vertical, 7)
                 .background(Color(NSColor.windowBackgroundColor).opacity(0.85))
             
-            // 3. Secondary Level 2 Sub-Menu Pills Bar (Visible for categories with sub-items)
-            if store.selectedCategory != .dashboard && !store.selectedCategory.subItems.isEmpty {
-                Divider()
-                secondarySubMenuBar
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 6)
-                    .background(Color(NSColor.controlBackgroundColor).opacity(0.6))
-            }
-            
             Divider()
             
-            // 4. Main Content View Area
+            // 3. Main Content View Area
             mainContentArea
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -215,48 +206,16 @@ public struct ContentView: View {
         }
     }
     
-    // MARK: - 2. Primary Level 1 Navigation Tabs Bar
+    // MARK: - 2. Primary Navigation Dropdown Menu Bar
     
-    private var primaryCategoryTabsBar: some View {
-        HStack(spacing: 6) {
-            ForEach(AppNavigationCategory.allCases) { cat in
-                let isSelected = (store.selectedCategory == cat)
-                let badge = badgeCountForCategory(cat)
-                
-                Button(action: {
-                    store.selectedCategory = cat
-                    if cat == .dashboard {
-                        store.selectedNavigation = .dashboard
-                    } else if let firstSub = cat.subItems.first {
-                        if !cat.subItems.contains(where: { $0 == store.selectedNavigation }) {
-                            store.selectedNavigation = firstSub
-                        }
-                    }
-                }) {
-                    HStack(spacing: 6) {
-                        Image(systemName: cat.iconName)
-                            .font(.system(size: 13.5, weight: isSelected ? .semibold : .regular))
-                        
-                        Text(cat.rawValue)
-                            .font(.system(size: 14, weight: isSelected ? .bold : .medium))
-                        
-                        if let count = badge, count > 0 {
-                            Text("\(count)")
-                                .font(.system(size: 10.5, weight: .bold))
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 1.5)
-                                .background(Color.red)
-                                .foregroundColor(.white)
-                                .clipShape(Capsule())
-                        }
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6.5)
-                    .background(isSelected ? Color.blue.opacity(0.14) : Color.clear)
-                    .foregroundColor(isSelected ? Color.blue : Color.primary.opacity(0.88))
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                }
-                .buttonStyle(.plain)
+    private var primaryDropdownMenuBar: some View {
+        HStack(spacing: 8) {
+            // Dashboard Direct Button
+            dashboardButton
+            
+            // Dropdown Menus for Categories
+            ForEach(AppNavigationCategory.allCases.filter { $0 != .dashboard }) { cat in
+                categoryDropdownMenu(for: cat)
             }
             
             if store.canCurrentUserPublishAnnouncements && store.selectedNavigation == .publish {
@@ -293,6 +252,85 @@ public struct ContentView: View {
         }
     }
     
+    private var dashboardButton: some View {
+        let isSelected = (store.selectedNavigation == .dashboard)
+        
+        return Button(action: {
+            store.selectedCategory = .dashboard
+            store.selectedNavigation = .dashboard
+        }) {
+            HStack(spacing: 6) {
+                Image(systemName: "square.grid.2x2.fill")
+                    .font(.system(size: 13.5, weight: isSelected ? .semibold : .regular))
+                
+                Text("首页概览")
+                    .font(.system(size: 14, weight: isSelected ? .bold : .medium))
+            }
+            .padding(.horizontal, 13)
+            .padding(.vertical, 7)
+            .background(isSelected ? Color.blue.opacity(0.14) : Color.clear)
+            .foregroundColor(isSelected ? Color.blue : Color.primary.opacity(0.88))
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+    
+    private func categoryDropdownMenu(for cat: AppNavigationCategory) -> some View {
+        let isSelected = (store.selectedCategory == cat)
+        let badge = badgeCountForCategory(cat)
+        let currentSub = isSelected && store.selectedNavigation != nil && store.selectedNavigation != .dashboard ? store.selectedNavigation : nil
+        
+        return Menu {
+            ForEach(cat.subItems, id: \.self) { (subItem: AppNavigationItem) in
+                Button(action: {
+                    store.selectedCategory = cat
+                    store.selectedNavigation = subItem
+                }) {
+                    HStack {
+                        Image(systemName: subItem.iconName)
+                        Text(subItem.rawValue)
+                        if let count = badgeCountForSubItem(subItem), count > 0 {
+                            Text(" (\(count))")
+                        }
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: cat.iconName)
+                    .font(.system(size: 13.5, weight: isSelected ? .semibold : .regular))
+                
+                if let sub = currentSub {
+                    Text("\(cat.rawValue) · \(sub.rawValue)")
+                        .font(.system(size: 14, weight: .bold))
+                } else {
+                    Text(cat.rawValue)
+                        .font(.system(size: 14, weight: isSelected ? .bold : .medium))
+                }
+                
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 8.5, weight: .bold))
+                    .foregroundColor(isSelected ? Color.blue : Color.secondary)
+                
+                if let count = badge, count > 0 {
+                    Text("\(count)")
+                        .font(.system(size: 10, weight: .bold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 1.5)
+                        .background(Color.red)
+                        .foregroundColor(.white)
+                        .clipShape(Capsule())
+                }
+            }
+            .padding(.horizontal, 13)
+            .padding(.vertical, 7)
+            .background(isSelected ? Color.blue.opacity(0.14) : Color(NSColor.controlBackgroundColor))
+            .foregroundColor(isSelected ? Color.blue : Color.primary.opacity(0.88))
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        }
+        .menuStyle(.borderlessButton)
+    }
+    
     private func badgeCountForCategory(_ cat: AppNavigationCategory) -> Int? {
         switch cat {
         case .teamShare:
@@ -301,62 +339,6 @@ public struct ContentView: View {
             return store.unreadNewsCount > 0 ? store.unreadNewsCount : nil
         default:
             return nil
-        }
-    }
-    
-    // MARK: - 3. Secondary Level 2 Sub-Menu Pills Bar
-    
-    private var secondarySubMenuBar: some View {
-        HStack(spacing: 8) {
-            HStack(spacing: 4) {
-                Image(systemName: store.selectedCategory.iconName)
-                    .font(.system(size: 11))
-                Text(store.selectedCategory.rawValue)
-                    .font(.system(size: 12, weight: .semibold))
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 9, weight: .bold))
-            }
-            .foregroundColor(.secondary)
-            .padding(.trailing, 4)
-            
-            ForEach(store.selectedCategory.subItems) { subItem in
-                let isSelected = (store.selectedNavigation == subItem)
-                let subBadge = badgeCountForSubItem(subItem)
-                
-                Button(action: {
-                    store.selectedNavigation = subItem
-                }) {
-                    HStack(spacing: 5) {
-                        Image(systemName: subItem.iconName)
-                            .font(.system(size: 11))
-                        
-                        Text(subItem.rawValue)
-                            .font(.system(size: 12.5, weight: isSelected ? .semibold : .regular))
-                        
-                        if let count = subBadge, count > 0 {
-                            Text("\(count)")
-                                .font(.system(size: 9.5, weight: .bold))
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 1)
-                                .background(Color.red)
-                                .foregroundColor(.white)
-                                .clipShape(Capsule())
-                        }
-                    }
-                    .padding(.horizontal, 11)
-                    .padding(.vertical, 4.5)
-                    .background(isSelected ? Color.accentColor : Color(NSColor.controlBackgroundColor))
-                    .foregroundColor(isSelected ? Color.white : Color.primary)
-                    .clipShape(Capsule())
-                    .overlay(
-                        Capsule()
-                            .stroke(isSelected ? Color.clear : Color.secondary.opacity(0.18), lineWidth: 1)
-                    )
-                }
-                .buttonStyle(.plain)
-            }
-            
-            Spacer()
         }
     }
     
