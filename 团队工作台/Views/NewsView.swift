@@ -20,6 +20,8 @@ public struct NewsView: View {
     @State private var showCommentSuccessToast: Bool = false
     @State private var showSyncAlert: Bool = false
     @State private var showDiscussionSection: Bool = true
+    @State private var showConfirmClearNewsAlert: Bool = false
+    @State private var showClearNewsSuccessAlert: Bool = false
     
     public init() {}
     
@@ -72,6 +74,20 @@ public struct NewsView: View {
             // Right: Article Reader & Discussion
             articleReaderSection
                 .frame(minWidth: 460, maxWidth: .infinity)
+        }
+        .alert("确认清空所有重要邮件缓存？", isPresented: $showConfirmClearNewsAlert) {
+            Button("确认清空", role: .destructive) {
+                store.clearAllNewsArticles()
+                showClearNewsSuccessAlert = true
+            }
+            Button("取消", role: .cancel) { }
+        } message: {
+            Text("此操作将彻底清除本地与云端存储的所有 Green Email 邮件内容并重置为空白状态。\n\n该操作无法撤销，确定要清空吗？")
+        }
+        .alert("邮件数据已清空", isPresented: $showClearNewsSuccessAlert) {
+            Button("确定", role: .cancel) { }
+        } message: {
+            Text("所有重要邮件缓存已成功清空。")
         }
         .alert("邮件同步结果", isPresented: $showSyncAlert) {
             if mailSyncService.needsPrivacySettingsGuide {
@@ -194,6 +210,12 @@ public struct NewsView: View {
                     }
                     Button("全量重新同步（提取今年全部）") {
                         triggerMailSync(forceFullSync: true)
+                    }
+                    if store.isDefaultAdmin(name: store.currentUser.name) {
+                        Divider()
+                        Button("清空所有邮件缓存", role: .destructive) {
+                            showConfirmClearNewsAlert = true
+                        }
                     }
                 }
             }

@@ -657,7 +657,33 @@ public class WorkbenchStore: ObservableObject {
     
     // MARK: - Clean All Data
     
+    public func clearAllNewsArticles() {
+        guard isDefaultAdmin(name: currentUser.name) else { return }
+        
+        newsArticles.removeAll()
+        readNewsArticleIDs.removeAll()
+        UserDefaults.standard.removeObject(forKey: newsStorageKey)
+        UserDefaults.standard.removeObject(forKey: readNewsStorageKey)
+        UserDefaults.standard.removeObject(forKey: "workbench_news_v1")
+        UserDefaults.standard.removeObject(forKey: "workbench_news_v2")
+        UserDefaults.standard.removeObject(forKey: "workbench_last_mail_sync_date")
+        MailSyncService.shared.lastSyncTime = nil
+        
+        // Remove news files and sync_meta from shared folder if connected
+        if let baseURL = SharedFolderSyncService.shared.sharedFolderURL, SharedFolderSyncService.shared.isConnected {
+            let newsDir = baseURL.appendingPathComponent("news", isDirectory: true)
+            if let files = try? FileManager.default.contentsOfDirectory(at: newsDir, includingPropertiesForKeys: nil) {
+                for f in files {
+                    try? FileManager.default.removeItem(at: f)
+                }
+            }
+        }
+        saveData()
+    }
+    
     public func clearAllData() {
+        guard isDefaultAdmin(name: currentUser.name) else { return }
+        
         announcements.removeAll()
         newsArticles.removeAll()
         faqItems.removeAll()

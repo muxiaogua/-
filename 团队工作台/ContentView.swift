@@ -278,15 +278,18 @@ public struct ContentView: View {
     private func categoryDropdownMenu(for cat: AppNavigationCategory) -> some View {
         let isSelected = (store.selectedCategory == cat)
         let badge = badgeCountForCategory(cat)
-        let currentSub = isSelected && store.selectedNavigation != nil && store.selectedNavigation != .dashboard ? store.selectedNavigation : nil
         
         return Menu {
             ForEach(cat.subItems, id: \.self) { (subItem: AppNavigationItem) in
+                let isCurrent = (store.selectedNavigation == subItem)
                 Button(action: {
                     store.selectedCategory = cat
                     store.selectedNavigation = subItem
                 }) {
                     HStack {
+                        if isCurrent {
+                            Image(systemName: "checkmark")
+                        }
                         Image(systemName: subItem.iconName)
                         Text(subItem.rawValue)
                         if let count = badgeCountForSubItem(subItem), count > 0 {
@@ -300,13 +303,8 @@ public struct ContentView: View {
                 Image(systemName: cat.iconName)
                     .font(.system(size: 13.5, weight: isSelected ? .semibold : .regular))
                 
-                if let sub = currentSub {
-                    Text("\(cat.rawValue) · \(sub.rawValue)")
-                        .font(.system(size: 14, weight: .bold))
-                } else {
-                    Text(cat.rawValue)
-                        .font(.system(size: 14, weight: isSelected ? .bold : .medium))
-                }
+                Text(cat.rawValue)
+                    .font(.system(size: 14, weight: isSelected ? .bold : .medium))
                 
                 Image(systemName: "chevron.down")
                     .font(.system(size: 8.5, weight: .bold))
@@ -420,9 +418,9 @@ public struct ContentView: View {
                     
                 // 小工具
                 case .luckyWheel:
-                    PlaceholderReservedView(title: "幸运大转盘", icon: "gift.fill", subtitle: "团队趣味抽奖与决策小工具正在开发中，即将上线！")
+                    LuckyWheelView()
                 case .dateCalculator:
-                    PlaceholderReservedView(title: "日期计算器", icon: "calendar.badge.plus", subtitle: "保修期与工作日跨度快速计算工具正在开发中，即将上线！")
+                    DateCalculatorView()
                     
                 // 特殊页面
                 case .publish:

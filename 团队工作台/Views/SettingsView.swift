@@ -12,6 +12,8 @@ public struct SettingsView: View {
     
     @State private var showConfirmClearAlert = false
     @State private var showClearSuccessAlert = false
+    @State private var showConfirmClearNewsAlert = false
+    @State private var showClearNewsSuccessAlert = false
     @State private var showTestNotificationAlert = false
     @State private var showEditProfileSheet = false
     @State private var showAddPermissionSheet = false
@@ -79,6 +81,20 @@ public struct SettingsView: View {
             .padding(28)
         }
         .background(Color(NSColor.windowBackgroundColor))
+        .alert("确认清空重要邮件数据？", isPresented: $showConfirmClearNewsAlert) {
+            Button("确认清空", role: .destructive) {
+                store.clearAllNewsArticles()
+                showClearNewsSuccessAlert = true
+            }
+            Button("取消", role: .cancel) { }
+        } message: {
+            Text("此操作将彻底清除本地与云端已保存的全部重要邮件（Green Email）内容并重置为空白状态。\n\n该操作无法撤销，确定要清空吗？")
+        }
+        .alert("邮件数据已清空", isPresented: $showClearNewsSuccessAlert) {
+            Button("确定", role: .cancel) { }
+        } message: {
+            Text("所有重要邮件缓存与云端同步记录已成功清空。")
+        }
         .alert("确认清空工作台数据？", isPresented: $showConfirmClearAlert) {
             Button("确认清空", role: .destructive) {
                 store.clearAllData()
@@ -892,35 +908,56 @@ public struct SettingsView: View {
         }
     }
     
+    @ViewBuilder
     private var dataManagementSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("数据管理")
-                .font(.system(size: 15, weight: .bold))
-            
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("清空工作台所有数据")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(.red)
-                        Text("清除全部已发布的团队公告、资讯文章及已读确认记录")
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary)
+        if store.isDefaultAdmin(name: store.currentUser.name) {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("数据管理 (超级管理员专属)")
+                    .font(.system(size: 15, weight: .bold))
+                
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("清空重要邮件缓存")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(.orange)
+                            Text("清除本地与云端已保存的邮件内容，重置为全新拉取状态")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        Button("清空邮件数据", role: .destructive) {
+                            showConfirmClearNewsAlert = true
+                        }
+                        .controlSize(.small)
                     }
-                    Spacer()
-                    Button("清空全部数据", role: .destructive) {
-                        showConfirmClearAlert = true
+                    
+                    Divider()
+                    
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("清空工作台所有数据")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(.red)
+                            Text("清除全部已发布的团队公告、资讯文章及已读确认记录")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        Button("清空全部数据", role: .destructive) {
+                            showConfirmClearAlert = true
+                        }
+                        .controlSize(.small)
                     }
-                    .controlSize(.small)
                 }
+                .padding(16)
+                .background(Color(NSColor.controlBackgroundColor))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color.secondary.opacity(0.1), lineWidth: 1)
+                )
             }
-            .padding(16)
-            .background(Color(NSColor.controlBackgroundColor))
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(Color.secondary.opacity(0.1), lineWidth: 1)
-            )
         }
     }
     
