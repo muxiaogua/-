@@ -49,12 +49,14 @@ public struct SidebarView: View {
         case .leaveRequest: return .orange
         case .myStats: return .teal
         case .news: return .green
+        case .npiQuery: return .teal
         case .faq: return .blue
         case .priceQuery: return .yellow
         case .caseAssistance: return .pink
         case .sharedKnowledge: return .brown
         case .luckyWheel: return .red
         case .dateCalculator: return .cyan
+        case .mindRetreat: return .teal
         case .publish: return .orange
         case .settings: return .gray
         }

@@ -5,6 +5,7 @@
 
 import SwiftUI
 import AppKit
+import RelaxKit
 
 public struct ContentView: View {
     @EnvironmentObject var store: WorkbenchStore
@@ -279,54 +280,60 @@ public struct ContentView: View {
         let isSelected = (store.selectedCategory == cat)
         let badge = badgeCountForCategory(cat)
         
-        return Menu {
-            ForEach(cat.subItems, id: \.self) { (subItem: AppNavigationItem) in
-                let isCurrent = (store.selectedNavigation == subItem)
-                Button(action: {
-                    store.selectedCategory = cat
-                    store.selectedNavigation = subItem
-                }) {
-                    HStack {
-                        if isCurrent {
-                            Image(systemName: "checkmark")
-                        }
-                        Image(systemName: subItem.iconName)
-                        Text(subItem.rawValue)
-                        if let count = badgeCountForSubItem(subItem), count > 0 {
-                            Text(" (\(count))")
+        return ZStack(alignment: .topTrailing) {
+            Menu {
+                ForEach(cat.subItems, id: \.self) { (subItem: AppNavigationItem) in
+                    let subBadge = badgeCountForSubItem(subItem)
+                    
+                    Button(action: {
+                        store.selectedCategory = cat
+                        store.selectedNavigation = subItem
+                    }) {
+                        if let count = subBadge, count > 0 {
+                            Text("\(subItem.rawValue) (\(count)条未读)")
+                        } else {
+                            Text(subItem.rawValue)
                         }
                     }
                 }
-            }
-        } label: {
-            HStack(spacing: 6) {
-                Image(systemName: cat.iconName)
-                    .font(.system(size: 13.5, weight: isSelected ? .semibold : .regular))
-                
-                Text(cat.rawValue)
-                    .font(.system(size: 14, weight: isSelected ? .bold : .medium))
-                
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 8.5, weight: .bold))
-                    .foregroundColor(isSelected ? Color.blue : Color.secondary)
-                
-                if let count = badge, count > 0 {
-                    Text("\(count)")
-                        .font(.system(size: 10, weight: .bold))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 1.5)
-                        .background(Color.red)
-                        .foregroundColor(.white)
-                        .clipShape(Capsule())
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: cat.iconName)
+                        .font(.system(size: 13.5, weight: isSelected ? .semibold : .regular))
+                    
+                    Text(cat.rawValue)
+                        .font(.system(size: 14, weight: isSelected ? .bold : .medium))
+                    
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 8.5, weight: .bold))
+                        .foregroundColor(isSelected ? Color.blue : Color.secondary)
                 }
+                .padding(.horizontal, 13)
+                .padding(.vertical, 7)
+                .background(isSelected ? Color.blue.opacity(0.14) : Color(NSColor.controlBackgroundColor))
+                .foregroundColor(isSelected ? Color.blue : Color.primary.opacity(0.88))
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
-            .padding(.horizontal, 13)
-            .padding(.vertical, 7)
-            .background(isSelected ? Color.blue.opacity(0.14) : Color(NSColor.controlBackgroundColor))
-            .foregroundColor(isSelected ? Color.blue : Color.primary.opacity(0.88))
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .menuStyle(.borderlessButton)
+            
+            // 独立的浮层角标，不受 NSMenu 按钮自身裁切影响
+            if let count = badge, count > 0 {
+                Text(count > 99 ? "99+" : "\(count)")
+                    .font(.system(size: 9.5, weight: .heavy, design: .rounded))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 2)
+                    .background(Color.red)
+                    .clipShape(Capsule())
+                    .overlay(
+                        Capsule()
+                            .stroke(Color(NSColor.windowBackgroundColor), lineWidth: 1.5)
+                    )
+                    .shadow(color: Color.black.opacity(0.2), radius: 2, y: 1)
+                    .offset(x: 5, y: -4)
+                    .allowsHitTesting(false)
+            }
         }
-        .menuStyle(.borderlessButton)
     }
     
     private func badgeCountForCategory(_ cat: AppNavigationCategory) -> Int? {
@@ -405,10 +412,12 @@ public struct ContentView: View {
                 // 查询中心
                 case .news:
                     NewsView()
+                case .npiQuery:
+                    NPIQueryView()
                 case .faq:
                     FAQView()
                 case .priceQuery:
-                    PlaceholderReservedView(title: "价格查询", icon: "tag.fill", subtitle: "官方配件与维修服务价格速查工具正在规划中，即将上线！")
+                    PriceQueryView()
                     
                 // 互帮互助
                 case .caseAssistance:
@@ -421,6 +430,8 @@ public struct ContentView: View {
                     LuckyWheelView()
                 case .dateCalculator:
                     DateCalculatorView()
+                case .mindRetreat:
+                    RelaxMainView()
                     
                 // 特殊页面
                 case .publish:

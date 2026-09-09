@@ -27,6 +27,13 @@ public class WorkbenchStore: ObservableObject {
     @Published public var currentMemberShiftSchedule: MemberShiftSchedule = MemberShiftSchedule()
     @Published public var teamShiftSchedules: [MemberShiftSchedule] = []
     
+    // 价格查询 (Device Price Query)
+    @Published public var devicePrices: [DevicePriceItem] = []
+    @Published public var priceApiUrl: String = ""
+    @Published public var isSyncingPrices: Bool = false
+    @Published public var priceSyncErrorMessage: String? = nil
+    @Published public var lastPriceSyncTime: Date? = nil
+    
     private let announcementsStorageKey = "workbench_announcements_v3"
     private let newsStorageKey = "workbench_news_v3"
     private let faqStorageKey = "workbench_faq_v3"
@@ -36,6 +43,9 @@ public class WorkbenchStore: ObservableObject {
     private let readAnnouncementsStorageKey = "workbench_read_announcements_ids_v1"
     private let permissionsStorageKey = "workbench_permissions_v1"
     private let shiftsStorageKeyPrefix = "workbench_shift_schedule_v1_"
+    private let devicePricesStorageKey = "workbench_device_prices_v1"
+    private let priceApiUrlStorageKey = "workbench_price_api_url_v1"
+    private let lastPriceSyncTimeStorageKey = "workbench_last_price_sync_time_v1"
     
     public init() {
         loadData()
@@ -593,6 +603,66 @@ public class WorkbenchStore: ObservableObject {
         }
     }
     
+    // MARK: - Actions: Device Price Query (REST API 实时同步引擎)
+    
+    public func syncPricesFromAPI(customUrl: String? = nil) async {
+        let targetUrlStr = (customUrl ?? self.priceApiUrl).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let url = URL(string: targetUrlStr), !targetUrlStr.isEmpty else {
+            self.priceSyncErrorMessage = "请输入有效的 API 接口 URL (例如 https://example.com/api/prices)"
+            return
+        }
+        
+        self.isSyncingPrices = true
+        self.priceSyncErrorMessage = nil
+        self.priceApiUrl = targetUrlStr
+        
+        do {
+            var request = URLRequest(url: url)
+            request.timeoutInterval = 15.0
+            request.httpMethod = "GET"
+            request.setValue("application/json", forHTTPHeaderField: "Accept")
+            request.setValue("Optimus-TeamWorkbench-Mac", forHTTPHeaderField: "User-Agent")
+            
+            let (data, response) = try await URLSession.shared.data(for: request)
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw URLError(.badServerResponse)
+            }
+            
+            guard (200...299).contains(httpResponse.statusCode) else {
+                throw NSError(domain: "PriceSyncError", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: "服务器响应错误 (HTTP \(httpResponse.statusCode))"])
+            }
+            
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            
+            // Try standard array first, then wrapped response
+            var parsedPrices: [DevicePriceItem] = []
+            if let directList = try? decoder.decode([DevicePriceItem].self, from: data) {
+                parsedPrices = directList
+            } else if let wrapped = try? decoder.decode(PriceApiResponse.self, from: data), let list = wrapped.data {
+                parsedPrices = list
+            } else {
+                throw NSError(domain: "PriceParseError", code: -1, userInfo: [NSLocalizedDescriptionKey: "JSON 格式不匹配，期望 [DevicePriceItem] 数组或 { data: [DevicePriceItem] }"])
+            }
+            
+            self.devicePrices = parsedPrices
+            self.lastPriceSyncTime = Date()
+            self.isSyncingPrices = false
+            self.saveData()
+        } catch {
+            self.isSyncingPrices = false
+            self.priceSyncErrorMessage = error.localizedDescription
+        }
+    }
+    
+    public func clearAllDevicePrices() {
+        self.devicePrices.removeAll()
+        self.lastPriceSyncTime = nil
+        self.priceSyncErrorMessage = nil
+        self.saveData()
+    }
+    
     // MARK: - Actions: User Identity
     
     public func updateCurrentUser(name: String, avatarSymbol: String) {
@@ -704,6 +774,29 @@ public class WorkbenchStore: ObservableObject {
     
     // MARK: - Persistence & Cloud Shared Folder Sync
     
+    /// Incremental save specifically for News/Green Email to prevent freezing UI by re-encoding all unrelated store models
+    public func saveNewsArticlesOnly() {
+        if let encodedNews = try? JSONEncoder().encode(newsArticles) {
+            UserDefaults.standard.set(encodedNews, forKey: newsStorageKey)
+        }
+        
+        // Write incrementally to iCloud Shared Folder if connected in background
+        if let baseURL = SharedFolderSyncService.shared.sharedFolderURL, SharedFolderSyncService.shared.isConnected {
+            let articlesToSave = self.newsArticles
+            DispatchQueue.global(qos: .utility).async {
+                let encoder = JSONEncoder()
+                let newsDir = baseURL.appendingPathComponent("news", isDirectory: true)
+                try? FileManager.default.createDirectory(at: newsDir, withIntermediateDirectories: true)
+                for article in articlesToSave {
+                    let fileURL = newsDir.appendingPathComponent("news_\(article.id.uuidString).json")
+                    if let data = try? encoder.encode(article) {
+                        try? data.write(to: fileURL)
+                    }
+                }
+            }
+        }
+    }
+    
     public func saveData() {
         // 1. Save to local fast cache
         if let encodedAnnouncements = try? JSONEncoder().encode(announcements) {
@@ -724,55 +817,71 @@ public class WorkbenchStore: ObservableObject {
         if let encodedPerms = try? JSONEncoder().encode(permissionConfig) {
             UserDefaults.standard.set(encodedPerms, forKey: permissionsStorageKey)
         }
+        if let encodedPrices = try? JSONEncoder().encode(devicePrices) {
+            UserDefaults.standard.set(encodedPrices, forKey: devicePricesStorageKey)
+        }
+        UserDefaults.standard.set(priceApiUrl, forKey: priceApiUrlStorageKey)
+        if let lastSync = lastPriceSyncTime {
+            UserDefaults.standard.set(lastSync.timeIntervalSince1970, forKey: lastPriceSyncTimeStorageKey)
+        }
         
-        // 2. If connected to iCloud shared folder, write to shared storage
+        // 2. If connected to iCloud shared folder, write to shared storage in background to avoid freezing UI
         if let baseURL = SharedFolderSyncService.shared.sharedFolderURL, SharedFolderSyncService.shared.isConnected {
-            saveToSharedFolder(at: baseURL)
-        }
-    }
-    
-    private func saveToSharedFolder(at baseURL: URL) {
-        let encoder = JSONEncoder()
-        
-        // Write announcements
-        let annDir = baseURL.appendingPathComponent("announcements", isDirectory: true)
-        for ann in announcements {
-            let fileURL = annDir.appendingPathComponent("announcement_\(ann.id.uuidString).json")
-            if let data = try? encoder.encode(ann) {
-                try? data.write(to: fileURL)
+            let currentAnn = self.announcements
+            let currentNews = self.newsArticles
+            let currentFaq = self.faqItems
+            let currentUsr = self.currentUser
+            let currentPerm = self.permissionConfig
+            
+            DispatchQueue.global(qos: .utility).async {
+                let encoder = JSONEncoder()
+                
+                // Write announcements
+                let annDir = baseURL.appendingPathComponent("announcements", isDirectory: true)
+                try? FileManager.default.createDirectory(at: annDir, withIntermediateDirectories: true)
+                for ann in currentAnn {
+                    let fileURL = annDir.appendingPathComponent("announcement_\(ann.id.uuidString).json")
+                    if let data = try? encoder.encode(ann) {
+                        try? data.write(to: fileURL)
+                    }
+                }
+                
+                // Write Green Email & News Articles
+                let newsDir = baseURL.appendingPathComponent("news", isDirectory: true)
+                try? FileManager.default.createDirectory(at: newsDir, withIntermediateDirectories: true)
+                for article in currentNews {
+                    let fileURL = newsDir.appendingPathComponent("news_\(article.id.uuidString).json")
+                    if let data = try? encoder.encode(article) {
+                        try? data.write(to: fileURL)
+                    }
+                }
+                
+                // Write FAQs
+                let faqDir = baseURL.appendingPathComponent("faq", isDirectory: true)
+                try? FileManager.default.createDirectory(at: faqDir, withIntermediateDirectories: true)
+                for item in currentFaq {
+                    let fileURL = faqDir.appendingPathComponent("faq_\(item.id.uuidString).json")
+                    if let data = try? encoder.encode(item) {
+                        try? data.write(to: fileURL)
+                    }
+                }
+                
+                // Write current member presence to roster
+                let rosterDir = baseURL.appendingPathComponent("roster", isDirectory: true)
+                try? FileManager.default.createDirectory(at: rosterDir, withIntermediateDirectories: true)
+                let memberURL = rosterDir.appendingPathComponent("member_\(currentUsr.name).json")
+                if let data = try? encoder.encode(currentUsr) {
+                    try? data.write(to: memberURL)
+                }
+                
+                // Write permissions config
+                let permDir = baseURL.appendingPathComponent("permissions", isDirectory: true)
+                try? FileManager.default.createDirectory(at: permDir, withIntermediateDirectories: true)
+                let permURL = permDir.appendingPathComponent("permissions.json")
+                if let data = try? encoder.encode(currentPerm) {
+                    try? data.write(to: permURL)
+                }
             }
-        }
-        
-        // Write Green Email & News Articles
-        let newsDir = baseURL.appendingPathComponent("news", isDirectory: true)
-        for article in newsArticles {
-            let fileURL = newsDir.appendingPathComponent("news_\(article.id.uuidString).json")
-            if let data = try? encoder.encode(article) {
-                try? data.write(to: fileURL)
-            }
-        }
-        
-        // Write FAQs
-        let faqDir = baseURL.appendingPathComponent("faq", isDirectory: true)
-        for item in faqItems {
-            let fileURL = faqDir.appendingPathComponent("faq_\(item.id.uuidString).json")
-            if let data = try? encoder.encode(item) {
-                try? data.write(to: fileURL)
-            }
-        }
-        
-        // Write current member presence to roster
-        let rosterDir = baseURL.appendingPathComponent("roster", isDirectory: true)
-        let memberURL = rosterDir.appendingPathComponent("member_\(currentUser.name).json")
-        if let data = try? encoder.encode(currentUser) {
-            try? data.write(to: memberURL)
-        }
-        
-        // Write permissions config
-        let permDir = baseURL.appendingPathComponent("permissions", isDirectory: true)
-        let permURL = permDir.appendingPathComponent("permissions.json")
-        if let data = try? encoder.encode(permissionConfig) {
-            try? data.write(to: permURL)
         }
     }
     
@@ -852,7 +961,12 @@ public class WorkbenchStore: ObservableObject {
             for file in files where file.pathExtension == "json" {
                 if let data = try? Data(contentsOf: file),
                    let article = try? decoder.decode(NewsArticle.self, from: data) {
-                    loadedNews.append(article)
+                    // Filter out stale Slack Support files that don't contain a Records table
+                    if article.category == .slackSupport && !article.content.contains("|") {
+                        try? fileManager.removeItem(at: file)
+                    } else {
+                        loadedNews.append(article)
+                    }
                 }
             }
         }
@@ -866,6 +980,7 @@ public class WorkbenchStore: ObservableObject {
                 }
             }
             self.newsArticles = mergedNews.sorted { $0.publishDate > $1.publishDate }
+            self.objectWillChange.send()
         }
         
         // Read News sync metadata from cloud shared folder
@@ -1011,8 +1126,8 @@ public class WorkbenchStore: ObservableObject {
     }
     
     public func forceSyncAllWithSharedFolder() {
-        if let baseURL = SharedFolderSyncService.shared.sharedFolderURL, SharedFolderSyncService.shared.isConnected {
-            saveToSharedFolder(at: baseURL)
+        if SharedFolderSyncService.shared.isConnected {
+            saveData()
             loadDataFromSharedFolder()
             SharedFolderSyncService.shared.lastSyncDate = Date()
             SharedFolderSyncService.shared.syncMessage = "全员数据云端双向同步完成"
@@ -1076,6 +1191,10 @@ public class WorkbenchStore: ObservableObject {
                     if article.category == .greenEmail {
                         return article.publishDate >= oneYearAgo
                     }
+                    // Only keep Slack Support articles that actually contain a Records table
+                    if article.category == .slackSupport {
+                        return article.content.contains("|")
+                    }
                     return true
                 }
                 .map { article in
@@ -1098,6 +1217,19 @@ public class WorkbenchStore: ObservableObject {
             self.faqItems = decoded.filter { !Self.presetFAQQuestionsBlocklist.contains($0.question) }
         } else {
             self.faqItems = []
+        }
+        
+        // 价格查询 (Device Prices) - 本地加载，无预设模拟数据 (初始纯空)
+        let priceData = UserDefaults.standard.data(forKey: devicePricesStorageKey)
+        if let data = priceData, let decoded = try? JSONDecoder().decode([DevicePriceItem].self, from: data) {
+            self.devicePrices = decoded
+        } else {
+            self.devicePrices = []
+        }
+        self.priceApiUrl = UserDefaults.standard.string(forKey: priceApiUrlStorageKey) ?? ""
+        let lastSyncSec = UserDefaults.standard.double(forKey: lastPriceSyncTimeStorageKey)
+        if lastSyncSec > 0 {
+            self.lastPriceSyncTime = Date(timeIntervalSince1970: lastSyncSec)
         }
         
         var hasNewItems = false
@@ -1157,6 +1289,7 @@ public class WorkbenchStore: ObservableObject {
 public enum AppNavigationCategory: String, CaseIterable, Identifiable {
     case dashboard = "首页概览"
     case teamShare = "团队共享"
+    case npiFocus = "NPI重点"
     case personalCenter = "个人中心"
     case queryCenter = "查询中心"
     case mutualHelp = "互帮互助"
@@ -1168,6 +1301,7 @@ public enum AppNavigationCategory: String, CaseIterable, Identifiable {
         switch self {
         case .dashboard: return "square.grid.2x2.fill"
         case .teamShare: return "person.2.fill"
+        case .npiFocus: return "flame.fill"
         case .personalCenter: return "person.crop.circle.fill"
         case .queryCenter: return "magnifyingglass.circle.fill"
         case .mutualHelp: return "hands.sparkles.fill"
@@ -1177,7 +1311,7 @@ public enum AppNavigationCategory: String, CaseIterable, Identifiable {
     
     public var isTeamSynced: Bool {
         switch self {
-        case .dashboard, .teamShare, .queryCenter, .mutualHelp:
+        case .dashboard, .teamShare, .npiFocus, .queryCenter, .mutualHelp:
             return true
         case .personalCenter, .tools:
             return false
@@ -1194,6 +1328,8 @@ public enum AppNavigationCategory: String, CaseIterable, Identifiable {
             return [.dashboard]
         case .teamShare:
             return [.announcements, .teamShifts]
+        case .npiFocus:
+            return [.npiQuery]
         case .personalCenter:
             return [.shifts, .leaveRequest, .myStats]
         case .queryCenter:
@@ -1201,7 +1337,7 @@ public enum AppNavigationCategory: String, CaseIterable, Identifiable {
         case .mutualHelp:
             return [.caseAssistance, .sharedKnowledge]
         case .tools:
-            return [.luckyWheel, .dateCalculator]
+            return [.luckyWheel, .dateCalculator, .mindRetreat]
         }
     }
 }
@@ -1212,6 +1348,9 @@ public enum AppNavigationItem: String, CaseIterable, Identifiable {
     // 团队共享
     case announcements = "团队公告"
     case teamShifts = "团队班表"
+    
+    // NPI重点
+    case npiQuery = "NPI 检索"
     
     // 个人中心
     case shifts = "我的班表"
@@ -1230,6 +1369,7 @@ public enum AppNavigationItem: String, CaseIterable, Identifiable {
     // 小工具
     case luckyWheel = "幸运大转盘"
     case dateCalculator = "日期计算器"
+    case mindRetreat = "心灵歇脚处"
     
     // System Special
     case publish = "发布中心"
@@ -1246,12 +1386,14 @@ public enum AppNavigationItem: String, CaseIterable, Identifiable {
         case .leaveRequest: return "airplane.departure"
         case .myStats: return "chart.bar.xaxis"
         case .news: return "envelope.fill"
+        case .npiQuery: return "doc.text.magnifyingglass"
         case .faq: return "questionmark.bubble.fill"
         case .priceQuery: return "tag.fill"
         case .caseAssistance: return "bubble.left.and.exclamationmark.bubble.right.fill"
         case .sharedKnowledge: return "books.vertical.fill"
         case .luckyWheel: return "gift.fill"
         case .dateCalculator: return "calendar.badge.plus"
+        case .mindRetreat: return "leaf.circle.fill"
         case .publish: return "square.and.pencil"
         case .settings: return "gearshape.fill"
         }

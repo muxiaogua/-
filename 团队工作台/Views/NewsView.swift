@@ -111,11 +111,6 @@ public struct NewsView: View {
                 selectedCategory = article.category
                 selectedArticleID = article.id
                 store.markNewsArticleAsRead(id: article.id)
-            } else if selectedCategory != .all {
-                selectedArticleID = filteredArticles.first?.id
-                if let firstID = selectedArticleID {
-                    store.markNewsArticleAsRead(id: firstID)
-                }
             }
         }
         .onChange(of: store.selectedNewsArticleID) { _, newID in
@@ -129,11 +124,8 @@ public struct NewsView: View {
         .onChange(of: selectedCategory) { _, newCat in
             if newCat == .all && searchText.trimmingCharacters(in: .whitespaces).isEmpty {
                 selectedArticleID = nil
-            } else if selectedArticleID == nil || !filteredArticles.contains(where: { $0.id == selectedArticleID }) {
-                selectedArticleID = filteredArticles.first?.id
-                if let firstID = selectedArticleID {
-                    store.markNewsArticleAsRead(id: firstID)
-                }
+            } else if selectedArticleID != nil && !filteredArticles.contains(where: { $0.id == selectedArticleID }) {
+                selectedArticleID = nil
             }
         }
         .onChange(of: selectedArticleID) { _, newID in
@@ -179,42 +171,44 @@ public struct NewsView: View {
                         .stroke(Color.secondary.opacity(0.18), lineWidth: 1)
                 )
                 
-                Button(action: { triggerMailSync(forceFullSync: false) }) {
-                    HStack(spacing: 4) {
-                        if mailSyncService.isSyncing {
-                            ProgressView()
-                                .controlSize(.mini)
-                        } else {
-                            Image(systemName: "arrow.triangle.2.circlepath")
-                                .font(.system(size: 10.5))
+                if store.canCurrentUserSyncData {
+                    Button(action: { triggerMailSync(forceFullSync: false) }) {
+                        HStack(spacing: 4) {
+                            if mailSyncService.isSyncing {
+                                ProgressView()
+                                    .controlSize(.mini)
+                            } else {
+                                Image(systemName: "arrow.triangle.2.circlepath")
+                                    .font(.system(size: 10.5))
+                            }
+                            Text("同步")
+                                .font(.system(size: 11.5, weight: .medium))
                         }
-                        Text("同步")
-                            .font(.system(size: 11.5, weight: .medium))
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 5.5)
+                        .background(Color.green.opacity(0.12))
+                        .foregroundColor(.green)
+                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .stroke(Color.green.opacity(0.35), lineWidth: 1)
+                        )
                     }
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 5.5)
-                    .background(Color.green.opacity(0.12))
-                    .foregroundColor(.green)
-                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .stroke(Color.green.opacity(0.35), lineWidth: 1)
-                    )
-                }
-                .buttonStyle(.plain)
-                .disabled(mailSyncService.isSyncing)
-                .help(mailSyncService.lastSyncTime != nil ? "增量同步：检索 \(formatSyncTime(mailSyncService.lastSyncTime!)) 后的新邮件（右键可全量重新同步）" : "从邮件应用同步发件人为 ic_gc_aha_sacs@apple.com 的 Green Email")
-                .contextMenu {
-                    Button("增量同步（检查新邮件）") {
-                        triggerMailSync(forceFullSync: false)
-                    }
-                    Button("全量重新同步（提取今年全部）") {
-                        triggerMailSync(forceFullSync: true)
-                    }
-                    if store.isDefaultAdmin(name: store.currentUser.name) {
-                        Divider()
-                        Button("清空所有邮件缓存", role: .destructive) {
-                            showConfirmClearNewsAlert = true
+                    .buttonStyle(.plain)
+                    .disabled(mailSyncService.isSyncing)
+                    .help(mailSyncService.lastSyncTime != nil ? "增量同步：检索 \(formatSyncTime(mailSyncService.lastSyncTime!)) 后的新邮件（右键可全量重新同步）" : "从邮件应用同步发件人为 ic_gc_aha_sacs@apple.com 的 Green Email")
+                    .contextMenu {
+                        Button("增量同步（检查新邮件）") {
+                            triggerMailSync(forceFullSync: false)
+                        }
+                        Button("全量重新同步（提取今年全部）") {
+                            triggerMailSync(forceFullSync: true)
+                        }
+                        if store.isDefaultAdmin(name: store.currentUser.name) {
+                            Divider()
+                            Button("清空所有邮件缓存", role: .destructive) {
+                                showConfirmClearNewsAlert = true
+                            }
                         }
                     }
                 }
@@ -235,7 +229,7 @@ public struct NewsView: View {
                         }
                         .padding(.horizontal, 10)
                         .padding(.vertical, 4.5)
-                        .background(isSelected ? (cat == .greenEmail ? Color.green : Color(NSColor.labelColor)) : Color(NSColor.controlBackgroundColor))
+                        .background(isSelected ? categoryHighlightColor(cat) : Color(NSColor.controlBackgroundColor))
                         .foregroundColor(isSelected ? Color.white : Color.primary)
                         .clipShape(Capsule())
                         .overlay(
@@ -357,9 +351,9 @@ public struct NewsView: View {
                                     .padding(.top, 4)
                             }
                             
-                            Image(systemName: article.category == .greenEmail ? "envelope.fill" : article.category.iconName)
+                            Image(systemName: article.category.iconName)
                                 .font(.system(size: 9))
-                                .foregroundColor(article.category == .greenEmail ? .green : .accentColor)
+                                .foregroundColor(categoryHighlightColor(article.category))
                                 .padding(.top, isUnread ? 3 : 2)
                             
                             Text(article.title)
@@ -619,6 +613,14 @@ public struct NewsView: View {
             let df = DateFormatter()
             df.dateFormat = "MM-dd HH:mm"
             return df.string(from: date)
+        }
+    }
+    
+    private func categoryHighlightColor(_ cat: NewsCategory) -> Color {
+        switch cat {
+        case .all: return Color(NSColor.labelColor)
+        case .greenEmail: return Color.green
+        case .slackSupport: return Color.purple
         }
     }
     

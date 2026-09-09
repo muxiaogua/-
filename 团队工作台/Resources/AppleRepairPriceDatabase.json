@@ -1,0 +1,2397 @@
+{
+  "iphone": {
+    "last_updated": "2026-09-08",
+    "category": "iPhone",
+    "series_order": [
+      "iPhone 17",
+      "iPhone 16",
+      "iPhone 15",
+      "iPhone 14",
+      "iPhone 13",
+      "iPhone 12",
+      "iPhone 11",
+      "iPhone XR",
+      "iPhone SE"
+    ],
+    "models": {
+      "iPhone 17 Pro Max": {
+        "battery": 969,
+        "back_glass": 1298,
+        "rear_camera": 1949,
+        "screen": 3198,
+        "screen_and_back_glass": 3929,
+        "other": 6499
+      },
+      "iPhone 17 Pro": {
+        "battery": 969,
+        "back_glass": 1298,
+        "rear_camera": 1949,
+        "screen": 2698,
+        "screen_and_back_glass": 3499,
+        "other": 5699
+      },
+      "iPhone 17": {
+        "battery": 729,
+        "back_glass": 1298,
+        "rear_camera": 1398,
+        "screen": 2298,
+        "screen_and_back_glass": 3099,
+        "other": 4499
+      },
+      "iPhone 17e": {
+        "battery": 729,
+        "back_glass": 1298,
+        "rear_camera": 1198,
+        "screen": 1799,
+        "screen_and_back_glass": 2599,
+        "other": 3899
+      },
+      "iPhone Air": {
+        "battery": 809,
+        "back_glass": 1298,
+        "rear_camera": 1599,
+        "screen": 2598,
+        "screen_and_back_glass": 3399,
+        "other": 5299
+      },
+      "iPhone 16 Pro Max": {
+        "battery": 969,
+        "back_glass": 1298,
+        "rear_camera": 1949,
+        "screen": 3198,
+        "screen_and_back_glass": 3929,
+        "other": 6499
+      },
+      "iPhone 16 Pro": {
+        "battery": 969,
+        "back_glass": 1298,
+        "rear_camera": 1949,
+        "screen": 2698,
+        "screen_and_back_glass": 3499,
+        "other": 5699
+      },
+      "iPhone 16 Plus": {
+        "battery": 729,
+        "back_glass": 1548,
+        "rear_camera": 1398,
+        "screen": 2698,
+        "screen_and_back_glass": 3499,
+        "other": 4799
+      },
+      "iPhone 16": {
+        "battery": 729,
+        "back_glass": 1298,
+        "rear_camera": 1398,
+        "screen": 2298,
+        "screen_and_back_glass": 3099,
+        "other": 4399
+      },
+      "iPhone 15 Pro Max": {
+        "battery": 809,
+        "back_glass": 1298,
+        "rear_camera": 1949,
+        "screen": 3198,
+        "screen_and_back_glass": 3929,
+        "other": 6499
+      },
+      "iPhone 15 Pro": {
+        "battery": 809,
+        "back_glass": 1298,
+        "rear_camera": 1749,
+        "screen": 2698,
+        "screen_and_back_glass": 3499,
+        "other": 5699
+      },
+      "iPhone 15 Plus": {
+        "battery": 809,
+        "back_glass": 1548,
+        "rear_camera": 1398,
+        "screen": 2698,
+        "screen_and_back_glass": 3499,
+        "other": 4799
+      },
+      "iPhone 15": {
+        "battery": 809,
+        "back_glass": 1298,
+        "rear_camera": 1398,
+        "screen": 2298,
+        "screen_and_back_glass": 3099,
+        "other": 4399
+      },
+      "iPhone 14 Pro Max": {
+        "battery": 809,
+        "back_glass": 3998,
+        "rear_camera": 1749,
+        "screen": 3198,
+        "screen_and_back_glass": 4299,
+        "other": 5699
+      },
+      "iPhone 14 Pro": {
+        "battery": 809,
+        "back_glass": 3598,
+        "rear_camera": 1749,
+        "screen": 2698,
+        "screen_and_back_glass": 3899,
+        "other": 5299
+      },
+      "iPhone 14 Plus": {
+        "battery": 809,
+        "back_glass": 1548,
+        "rear_camera": 1398,
+        "screen": 2698,
+        "screen_and_back_glass": 3499,
+        "other": 4499
+      },
+      "iPhone 14": {
+        "battery": 809,
+        "back_glass": 1298,
+        "rear_camera": 1398,
+        "screen": 2298,
+        "screen_and_back_glass": 3099,
+        "other": 4199
+      },
+      "iPhone 13 Pro Max": {
+        "battery": 729,
+        "back_glass": 3998,
+        "rear_camera": 1599,
+        "screen": 2698,
+        "screen_and_back_glass": 4299,
+        "other": 4999
+      },
+      "iPhone 13 Pro": {
+        "battery": 729,
+        "back_glass": 3598,
+        "rear_camera": 1599,
+        "screen": 2298,
+        "screen_and_back_glass": 3899,
+        "other": 4499
+      },
+      "iPhone 13": {
+        "battery": 729,
+        "back_glass": 2599,
+        "rear_camera": 1198,
+        "screen": 2298,
+        "screen_and_back_glass": 3399,
+        "other": 3499
+      },
+      "iPhone 13 mini": {
+        "battery": 729,
+        "back_glass": 2499,
+        "rear_camera": 1198,
+        "screen": 1799,
+        "screen_and_back_glass": 2899,
+        "other": 3199
+      },
+      "iPhone 12 Pro Max": {
+        "battery": 729,
+        "back_glass": 3998,
+        "rear_camera": 1599,
+        "screen": 2698,
+        "screen_and_back_glass": 4299,
+        "other": 4999
+      },
+      "iPhone 12 Pro": {
+        "battery": 729,
+        "back_glass": 3598,
+        "rear_camera": 1599,
+        "screen": 2298,
+        "screen_and_back_glass": 3899,
+        "other": 4499
+      },
+      "iPhone 12": {
+        "battery": 729,
+        "back_glass": 2599,
+        "rear_camera": 1198,
+        "screen": 2298,
+        "screen_and_back_glass": 3399,
+        "other": 3499
+      },
+      "iPhone 12 mini": {
+        "battery": 729,
+        "back_glass": 2499,
+        "rear_camera": 1198,
+        "screen": 1799,
+        "screen_and_back_glass": 2899,
+        "other": 3199
+      },
+      "iPhone 11 Pro Max": {
+        "battery": 729,
+        "back_glass": 3998,
+        "rear_camera": 1599,
+        "screen": 2698,
+        "screen_and_back_glass": 4299,
+        "other": 4999
+      },
+      "iPhone 11 Pro": {
+        "battery": 729,
+        "back_glass": 3598,
+        "rear_camera": 1599,
+        "screen": 2298,
+        "screen_and_back_glass": 3899,
+        "other": 4499
+      },
+      "iPhone 11": {
+        "battery": 729,
+        "back_glass": 2599,
+        "rear_camera": 1198,
+        "screen": 1548,
+        "screen_and_back_glass": 2899,
+        "other": 3199
+      },
+      "iPhone XR": {
+        "battery": 729,
+        "back_glass": 2599,
+        "rear_camera": 1198,
+        "screen": 1548,
+        "screen_and_back_glass": 2899,
+        "other": 3199
+      },
+      "iPhone SE (3rd gen)": {
+        "battery": 529,
+        "back_glass": 2199,
+        "rear_camera": 899,
+        "screen": 1099,
+        "screen_and_back_glass": 2399,
+        "other": 2399
+      },
+      "iPhone SE (2nd gen)": {
+        "battery": 529,
+        "back_glass": 2199,
+        "rear_camera": 899,
+        "screen": 1099,
+        "screen_and_back_glass": 2399,
+        "other": 2199
+      }
+    }
+  },
+  "ipad": {
+    "last_updated": "2026-09-08",
+    "category": "iPad",
+    "series_order": [
+      "iPad Pro",
+      "iPad Air",
+      "iPad mini",
+      "iPad",
+      "iPad 配件"
+    ],
+    "series": {
+      "iPad Pro": {
+        "13 英寸 iPad Pro (M5) 无线局域网机型": {
+          "oow": {
+            "battery": 1629,
+            "other": 9329
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 188,
+            "other_accidental": 628
+          }
+        },
+        "13 英寸 iPad Pro (M5) 无线局域网 + 蜂窝网络机型": {
+          "oow": {
+            "battery": 1629,
+            "other": 9729
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 188,
+            "other_accidental": 628
+          }
+        },
+        "11 英寸 iPad Pro (M5) 无线局域网机型": {
+          "oow": {
+            "battery": 1448,
+            "other": 8099
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 188,
+            "other_accidental": 628
+          }
+        },
+        "11 英寸 iPad Pro (M5) 无线局域网 + 蜂窝网络机型": {
+          "oow": {
+            "battery": 1448,
+            "other": 8509
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 188,
+            "other_accidental": 628
+          }
+        },
+        "13 英寸 iPad Pro（M4）无线局域网机型": {
+          "oow": {
+            "battery": 1629,
+            "other": 8949
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 188,
+            "other_accidental": 628
+          }
+        },
+        "13 英寸 iPad Pro（M4）无线局域网 + 蜂窝网络机型": {
+          "oow": {
+            "battery": 1629,
+            "other": 9349
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 188,
+            "other_accidental": 628
+          }
+        },
+        "11 英寸 iPad Pro（M4）无线局域网机型": {
+          "oow": {
+            "battery": 1448,
+            "other": 7719
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 188,
+            "other_accidental": 628
+          }
+        },
+        "11 英寸 iPad Pro（M4）无线局域网 + 蜂窝网络机型": {
+          "oow": {
+            "battery": 1448,
+            "other": 8129
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 188,
+            "other_accidental": 628
+          }
+        },
+        "12.9 英寸 iPad Pro（第 6 代）无线局域网机型": {
+          "oow": {
+            "battery": 1448,
+            "other": 6759
+          },
+          "ac": {
+            "battery": 0,
+            "other_accidental": 368
+          }
+        },
+        "12.9 英寸 iPad Pro（第 6 代）无线局域网 + 蜂窝网络机型": {
+          "oow": {
+            "battery": 1448,
+            "other": 7159
+          },
+          "ac": {
+            "battery": 0,
+            "other_accidental": 368
+          }
+        },
+        "12.9 英寸 iPad Pro（第 5 代）无线局域网机型": {
+          "oow": {
+            "battery": 948,
+            "other": 6759
+          },
+          "ac": {
+            "battery": 0,
+            "other_accidental": 368
+          }
+        },
+        "12.9 英寸 iPad Pro（第 5 代）无线局域网 + 蜂窝网络机型": {
+          "oow": {
+            "battery": 948,
+            "other": 7159
+          },
+          "ac": {
+            "battery": 0,
+            "other_accidental": 368
+          }
+        },
+        "12.9 英寸 iPad Pro（第 4 代）": {
+          "oow": {
+            "battery": 948,
+            "other": 5448
+          },
+          "ac": {
+            "battery": 0,
+            "other_accidental": 368
+          }
+        },
+        "11 英寸 iPad Pro（第 4 代）无线局域网机型": {
+          "oow": {
+            "battery": 1198,
+            "other": 5159
+          },
+          "ac": {
+            "battery": 0,
+            "other_accidental": 368
+          }
+        },
+        "11 英寸 iPad Pro（第 4 代）无线局域网 + 蜂窝网络机型": {
+          "oow": {
+            "battery": 1198,
+            "other": 5609
+          },
+          "ac": {
+            "battery": 0,
+            "other_accidental": 368
+          }
+        },
+        "11 英寸 iPad Pro（第 3 代）无线局域网机型": {
+          "oow": {
+            "battery": 948,
+            "other": 5159
+          },
+          "ac": {
+            "battery": 0,
+            "other_accidental": 368
+          }
+        },
+        "11 英寸 iPad Pro（第 3 代）无线局域网 + 蜂窝网络机型": {
+          "oow": {
+            "battery": 948,
+            "other": 5609
+          },
+          "ac": {
+            "battery": 0,
+            "other_accidental": 368
+          }
+        },
+        "11 英寸 iPad Pro（第 2 代）": {
+          "oow": {
+            "battery": 948,
+            "other": 4148
+          },
+          "ac": {
+            "battery": 0,
+            "other_accidental": 368
+          }
+        },
+        "11 英寸 iPad Pro": {
+          "oow": {
+            "battery": 948,
+            "other": 4148
+          },
+          "ac": {
+            "battery": 0,
+            "other_accidental": 368
+          }
+        }
+      },
+      "iPad Air": {
+        "13 英寸 iPad Air (M4) 无线局域网机型": {
+          "oow": {
+            "battery": 1198,
+            "other": 5759
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 188,
+            "other_accidental": 628
+          }
+        },
+        "13 英寸 iPad Air (M4) 无线局域网 + 蜂窝网络机型": {
+          "oow": {
+            "battery": 1198,
+            "other": 6209
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 188,
+            "other_accidental": 628
+          }
+        },
+        "11 英寸 iPad Air (M4) 无线局域网机型": {
+          "oow": {
+            "battery": 1048,
+            "other": 4509
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 188,
+            "other_accidental": 628
+          }
+        },
+        "11 英寸 iPad Air (M4) 无线局域网 + 蜂窝网络机型": {
+          "oow": {
+            "battery": 1048,
+            "other": 4909
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 188,
+            "other_accidental": 628
+          }
+        },
+        "13 英寸 iPad Air（M3）无线局域网机型": {
+          "oow": {
+            "battery": 1198,
+            "other": 5609
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 188,
+            "other_accidental": 628
+          }
+        },
+        "13 英寸 iPad Air（M3）无线局域网 + 蜂窝网络机型": {
+          "oow": {
+            "battery": 1198,
+            "other": 6059
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 188,
+            "other_accidental": 628
+          }
+        },
+        "11 英寸 iPad Air（M3）无线局域网机型": {
+          "oow": {
+            "battery": 948,
+            "other": 4359
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 188,
+            "other_accidental": 628
+          }
+        },
+        "11 英寸 iPad Air（M3）无线局域网 + 蜂窝网络机型": {
+          "oow": {
+            "battery": 948,
+            "other": 4759
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 188,
+            "other_accidental": 628
+          }
+        },
+        "13 英寸 iPad Air（M2）无线局域网机型": {
+          "oow": {
+            "battery": 1198,
+            "other": 5609
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 188,
+            "other_accidental": 628
+          }
+        },
+        "13 英寸 iPad Air（M2）无线局域网 + 蜂窝网络机型": {
+          "oow": {
+            "battery": 1198,
+            "other": 6059
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 188,
+            "other_accidental": 628
+          }
+        },
+        "11 英寸 iPad Air（M2）无线局域网机型": {
+          "oow": {
+            "battery": 948,
+            "other": 4359
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 188,
+            "other_accidental": 628
+          }
+        },
+        "11 英寸 iPad Air（M2）无线局域网 + 蜂窝网络机型": {
+          "oow": {
+            "battery": 948,
+            "other": 4759
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 188,
+            "other_accidental": 628
+          }
+        },
+        "iPad Air（第 5 代）无线局域网机型": {
+          "oow": {
+            "battery": 948,
+            "other": 4009
+          },
+          "ac": {
+            "battery": 0,
+            "other_accidental": 368
+          }
+        },
+        "iPad Air（第 5 代）无线局域网 + 蜂窝网络机型": {
+          "oow": {
+            "battery": 948,
+            "other": 4509
+          },
+          "ac": {
+            "battery": 0,
+            "other_accidental": 368
+          }
+        },
+        "iPad Air（第 4 代）": {
+          "oow": {
+            "battery": 948,
+            "other": 3398
+          },
+          "ac": {
+            "battery": 0,
+            "other_accidental": 368
+          }
+        }
+      },
+      "iPad mini": {
+        "iPad mini（A17 Pro）无线局域网机型": {
+          "oow": {
+            "battery": 948,
+            "other": 3479
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 188,
+            "other_accidental": 628
+          }
+        },
+        "iPad mini（A17 Pro）无线局域网 + 蜂窝网络机型": {
+          "oow": {
+            "battery": 948,
+            "other": 3759
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 188,
+            "other_accidental": 628
+          }
+        },
+        "iPad mini（第 6 代）无线局域网机型": {
+          "oow": {
+            "battery": 948,
+            "other": 3269
+          },
+          "ac": {
+            "battery": 0,
+            "other_accidental": 368
+          }
+        },
+        "iPad mini（第 6 代）无线局域网 + 蜂窝网络机型": {
+          "oow": {
+            "battery": 948,
+            "other": 3549
+          },
+          "ac": {
+            "battery": 0,
+            "other_accidental": 368
+          }
+        },
+        "iPad mini（第 5 代）": {
+          "oow": {
+            "battery": 948,
+            "other": 2459
+          },
+          "ac": {
+            "battery": 0,
+            "other_accidental": 368
+          }
+        }
+      },
+      "iPad": {
+        "iPad（A16）无线局域网机型": {
+          "oow": {
+            "battery": 948,
+            "other": 3069
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 188,
+            "other_accidental": 628
+          }
+        },
+        "iPad（A16）无线局域网 + 蜂窝网络机型": {
+          "oow": {
+            "battery": 948,
+            "other": 3479
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 188,
+            "other_accidental": 628
+          }
+        },
+        "iPad（第 10 代）无线局域网机型": {
+          "oow": {
+            "battery": 948,
+            "other": 2859
+          },
+          "ac": {
+            "battery": 0,
+            "other_accidental": 368
+          }
+        },
+        "iPad（第 10 代）无线局域网 + 蜂窝网络机型": {
+          "oow": {
+            "battery": 948,
+            "other": 3269
+          },
+          "ac": {
+            "battery": 0,
+            "other_accidental": 368
+          }
+        },
+        "iPad（第 9 代）": {
+          "oow": {
+            "battery": 799,
+            "other": 2499
+          },
+          "ac": {
+            "battery": 0,
+            "other_accidental": 368
+          }
+        },
+        "iPad（第 8 代）": {
+          "oow": {
+            "battery": 799,
+            "other": 2098
+          },
+          "ac": {
+            "battery": 0,
+            "other_accidental": 368
+          }
+        },
+        "iPad（第 7 代）": {
+          "oow": {
+            "battery": 799,
+            "other": 2098
+          },
+          "ac": {
+            "battery": 0,
+            "other_accidental": 368
+          }
+        }
+      },
+      "iPad 配件": {
+        "Apple Pencil Pro": {
+          "oow": {
+            "battery": 239,
+            "other": 888
+          },
+          "ac": {
+            "battery": 0,
+            "other": 188
+          }
+        },
+        "Apple Pencil (USB-C)": {
+          "oow": {
+            "battery": 239,
+            "other": 579
+          },
+          "ac": {
+            "battery": 0,
+            "other": 188
+          }
+        },
+        "Magic Keyboard Folio for iPad (10th generation)": {
+          "oow": {
+            "other": 1729
+          },
+          "ac": {
+            "battery": 0,
+            "other": 188
+          }
+        },
+        "适用于 13 英寸 iPad Pro（M4） 的妙控键盘": {
+          "oow": {
+            "other": 2379
+          },
+          "ac": {
+            "battery": 0,
+            "other": 188
+          }
+        },
+        "适用于 11 英寸 iPad Pro（M4） 的妙控键盘": {
+          "oow": {
+            "other": 2039
+          },
+          "ac": {
+            "battery": 0,
+            "other": 188
+          }
+        },
+        "适用于 12.9 英寸 iPad Pro 的妙控键盘": {
+          "oow": {
+            "other": 2379
+          },
+          "ac": {
+            "battery": 0,
+            "other": 188
+          }
+        },
+        "适用于 11 英寸 iPad Pro 的妙控键盘": {
+          "oow": {
+            "other": 2039
+          },
+          "ac": {
+            "battery": 0,
+            "other": 188
+          }
+        },
+        "适用于 12.9 英寸 iPad Pro 的键盘式智能双面夹": {
+          "oow": {
+            "other": 1359
+          },
+          "ac": {
+            "battery": 0,
+            "other": 188
+          }
+        },
+        "Apple Pencil（第 2 代）": {
+          "oow": {
+            "battery": 239,
+            "other": 888
+          },
+          "ac": {
+            "battery": 0,
+            "other": 188
+          }
+        },
+        "Smart Keyboard Folio for iPad Pro 11-inch": {
+          "oow": {
+            "other": 1189
+          },
+          "ac": {
+            "battery": 0,
+            "other": 188
+          }
+        },
+        "适用于 iPad Pro（10.5 英寸）的智能键盘": {
+          "oow": {
+            "other": 1062
+          },
+          "ac": {
+            "battery": 0,
+            "other": 188
+          }
+        },
+        "Apple Pencil": {
+          "oow": {
+            "battery": 239,
+            "other": 708
+          },
+          "ac": {
+            "battery": 0,
+            "other": 188
+          }
+        },
+        "适用于 iPad Pro（9.7 英寸）的智能键盘": {
+          "oow": {
+            "other": 1002
+          },
+          "ac": {
+            "battery": 0,
+            "other": 188
+          }
+        }
+      }
+    }
+  },
+  "mac": {
+    "last_updated": "2026-09-08",
+    "category": "Mac",
+    "series_order": [
+      "MacBook Neo",
+      "MacBook Air",
+      "MacBook Pro",
+      "iMac",
+      "Mac mini",
+      "Mac Studio",
+      "Mac Pro"
+    ],
+    "series": {
+      "MacBook Neo": {
+        "MacBook Neo（13 英寸，A18 Pro）": {
+          "oow": {
+            "battery": 1178
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 399,
+            "enclosure": 399,
+            "other_accidental": 1199
+          }
+        }
+      },
+      "MacBook Air": {
+        "MacBook Air（15 英寸，M5）": {
+          "oow": {
+            "battery": 1548
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 799,
+            "enclosure": 799,
+            "other_accidental": 2299
+          }
+        },
+        "MacBook Air（13 英寸，M5）": {
+          "oow": {
+            "battery": 1418
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 799,
+            "enclosure": 799,
+            "other_accidental": 2299
+          }
+        },
+        "MacBook Air（15 英寸，M4，2025 年）": {
+          "oow": {
+            "battery": 1548
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 799,
+            "enclosure": 799,
+            "other_accidental": 2299
+          }
+        },
+        "MacBook Air（13 英寸，M4，2025 年）": {
+          "oow": {
+            "battery": 1418
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 799,
+            "enclosure": 799,
+            "other_accidental": 2299
+          }
+        },
+        "MacBook Air（15 英寸，M3，2024 年）": {
+          "oow": {
+            "battery": 1548
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 799,
+            "enclosure": 799,
+            "other_accidental": 2299
+          }
+        },
+        "MacBook Air（13 英寸，M3，2024 年）": {
+          "oow": {
+            "battery": 1258
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 799,
+            "enclosure": 799,
+            "other_accidental": 2299
+          }
+        },
+        "MacBook Air（15 英寸，M2，2023 年）": {
+          "oow": {
+            "battery": 1548
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 799,
+            "enclosure": 799,
+            "other_accidental": 2299
+          }
+        },
+        "MacBook Air（M2，2022 年）": {
+          "oow": {
+            "battery": 1258
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 799,
+            "enclosure": 799,
+            "other_accidental": 2299
+          }
+        },
+        "MacBook Air（M1，2020 年）": {
+          "oow": {
+            "battery": 1258
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 799,
+            "enclosure": 799,
+            "other_accidental": 2299
+          }
+        },
+        "MacBook Air（视网膜显示屏，13 英寸，2020 年）": {
+          "oow": {
+            "battery": 1258
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 799,
+            "enclosure": 799,
+            "other_accidental": 2299
+          }
+        },
+        "MacBook Air (Retina, 13-inch, 2019)": {
+          "oow": {
+            "battery": 1258
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 799,
+            "enclosure": 799,
+            "other_accidental": 2299
+          }
+        },
+        "MacBook Air（13 英寸，2017 年）": {
+          "oow": {
+            "other_text": "—"
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 399,
+            "enclosure": 399,
+            "other_accidental": 1199
+          }
+        }
+      },
+      "MacBook Pro": {
+        "MacBook Pro（14 英寸，M5 Pro/M5 Max）": {
+          "oow": {
+            "battery": 1798
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 799,
+            "enclosure": 799,
+            "other_accidental": 2299
+          }
+        },
+        "MacBook Pro（16 英寸，M5 Pro/M5 Max）": {
+          "oow": {
+            "battery": 1968
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 799,
+            "enclosure": 799,
+            "other_accidental": 2299
+          }
+        },
+        "MacBook Pro（14 英寸，M5）": {
+          "oow": {
+            "battery": 1798
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 799,
+            "enclosure": 799,
+            "other_accidental": 2299
+          }
+        },
+        "MacBook Pro（16 英寸，M4，2024 年）": {
+          "oow": {
+            "battery": 1968
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 799,
+            "enclosure": 799,
+            "other_accidental": 2299
+          }
+        },
+        "MacBook Pro（14 英寸，M4，2024 年）": {
+          "oow": {
+            "battery": 1968
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 799,
+            "enclosure": 799,
+            "other_accidental": 2299
+          }
+        },
+        "MacBook Pro（16 英寸，M3，2023 年）": {
+          "oow": {
+            "battery": 1968
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 799,
+            "enclosure": 799,
+            "other_accidental": 2299
+          }
+        },
+        "MacBook Pro（14 英寸，M3，2023 年）": {
+          "oow": {
+            "battery": 1968
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 799,
+            "enclosure": 799,
+            "other_accidental": 2299
+          }
+        },
+        "MacBook Pro（16 英寸，M2，2023 年）": {
+          "oow": {
+            "battery": 1968
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 799,
+            "enclosure": 799,
+            "other_accidental": 2299
+          }
+        },
+        "MacBook Pro（14 英寸，M2，2023 年）": {
+          "oow": {
+            "battery": 1968
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 799,
+            "enclosure": 799,
+            "other_accidental": 2299
+          }
+        },
+        "MacBook Pro（13 英寸，M2，2022 年）": {
+          "oow": {
+            "battery": 1968
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 799,
+            "enclosure": 799,
+            "other_accidental": 2299
+          }
+        },
+        "MacBook Pro（16 英寸，2021 年机型）": {
+          "oow": {
+            "battery": 1968
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 799,
+            "enclosure": 799,
+            "other_accidental": 2299
+          }
+        },
+        "MacBook Pro（14 英寸，2021 年机型）": {
+          "oow": {
+            "battery": 1968
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 799,
+            "enclosure": 799,
+            "other_accidental": 2299
+          }
+        },
+        "MacBook Pro（13 英寸，M1，2020 年）": {
+          "oow": {
+            "battery": 1968
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 799,
+            "enclosure": 799,
+            "other_accidental": 2299
+          }
+        },
+        "MacBook Pro（13 英寸，2020 年，四个雷雳 3 端口）": {
+          "oow": {
+            "battery": 1968
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 799,
+            "enclosure": 799,
+            "other_accidental": 2299
+          }
+        },
+        "MacBook Pro（13 英寸，2020 年，两个雷雳 3 端口）": {
+          "oow": {
+            "battery": 1968
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 799,
+            "enclosure": 799,
+            "other_accidental": 2299
+          }
+        },
+        "MacBook Pro（16 英寸，2019 年）": {
+          "type": "laptop",
+          "oow": {
+            "battery": 1968
+          },
+          "ac": {
+            "battery": 0,
+            "screen": 799,
+            "enclosure": 799,
+            "other_accidental": 2299
+          }
+        }
+      },
+      "iMac": {
+        "iMac": {
+          "type": "desktop",
+          "oow": {
+            "other_text": "由技术人员诊断后报价"
+          },
+          "ac": {
+            "screen": 799,
+            "enclosure": 799,
+            "other_accidental": 2299
+          }
+        }
+      },
+      "Mac mini": {
+        "Mac mini": {
+          "type": "desktop",
+          "oow": {
+            "other_text": "由技术人员诊断后报价"
+          },
+          "ac": {
+            "enclosure": 799,
+            "other_accidental": 2299
+          }
+        }
+      },
+      "Mac Studio": {
+        "Mac Studio": {
+          "type": "desktop",
+          "oow": {
+            "other_text": "由技术人员诊断后报价"
+          },
+          "ac": {
+            "enclosure": 799,
+            "other_accidental": 2299
+          }
+        }
+      },
+      "Mac Pro": {
+        "Mac Pro": {
+          "type": "desktop",
+          "oow": {
+            "other_text": "由技术人员诊断后报价"
+          },
+          "ac": {
+            "enclosure": 799,
+            "other_accidental": 2299
+          }
+        }
+      }
+    }
+  },
+  "watch": {
+    "last_updated": "2026-09-08",
+    "category": "Watch",
+    "series_order": [
+      "Apple Watch Ultra",
+      "Apple Watch Series 11",
+      "Apple Watch Series 10",
+      "Apple Watch Series 9",
+      "Apple Watch Series 8",
+      "Apple Watch Series 7",
+      "Apple Watch Series 6",
+      "Apple Watch SE"
+    ],
+    "series": {
+      "Apple Watch Ultra": {
+        "Apple Watch Hermès Ultra 3": {
+          "oow": {
+            "battery": 809,
+            "other": 3949
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 588
+          }
+        },
+        "Apple Watch Ultra 3": {
+          "oow": {
+            "battery": 809,
+            "other": 3949
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 588
+          }
+        },
+        "Apple Watch Hermès Ultra 2": {
+          "oow": {
+            "battery": 809,
+            "other": 3949
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 588
+          }
+        },
+        "Apple Watch Ultra 2": {
+          "oow": {
+            "battery": 809,
+            "other": 3949
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 588
+          }
+        },
+        "Apple Watch Ultra": {
+          "oow": {
+            "battery": 809,
+            "other": 3949
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 588
+          }
+        }
+      },
+      "Apple Watch Series 11": {
+        "Apple Watch Hermès Series 11 GPS + 蜂窝网络 42 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 3198
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 588
+          }
+        },
+        "Apple Watch Hermès Series 11 GPS + 蜂窝网络 46 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 3198
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 588
+          }
+        },
+        "Apple Watch Series 11 GPS + 蜂窝网络 钛金属 42 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 3198
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Series 11 GPS + 蜂窝网络 钛金属 46 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 3198
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Series 11 GPS + 蜂窝网络 铝金属 42 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 2679
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Series 11 GPS + 蜂窝网络 铝金属 46 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 2679
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Series 11 GPS 铝金属 42 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 2309
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Series 11 GPS 铝金属 46 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 2309
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        }
+      },
+      "Apple Watch Series 10": {
+        "Apple Watch Hermès Series 10 GPS + 蜂窝网络 42 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 3198
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 588
+          }
+        },
+        "Apple Watch Hermès Series 10 GPS + 蜂窝网络 46 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 3198
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 588
+          }
+        },
+        "Apple Watch Series 10 GPS + 蜂窝网络 钛金属 42 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 3198
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Series 10 GPS + 蜂窝网络 钛金属 46 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 3198
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Series 10 GPS + 蜂窝网络 铝金属 42 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 2679
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Series 10 GPS + 蜂窝网络 铝金属 46 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 2679
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Series 10 GPS 铝金属 42 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 2309
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Series 10 GPS 铝金属 46 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 2309
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        }
+      },
+      "Apple Watch Series 9": {
+        "Apple Watch Hermès Series 9 GPS + 蜂窝网络 41 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 3198
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 588
+          }
+        },
+        "Apple Watch Hermès Series 9 GPS + 蜂窝网络 45 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 3198
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 588
+          }
+        },
+        "Apple Watch Series 9 GPS + 蜂窝网络 不锈钢 41 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 3198
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Series 9 GPS + 蜂窝网络 不锈钢 45 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 3198
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Series 9 GPS + 蜂窝网络 铝金属 41 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 2679
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Series 9 GPS + 蜂窝网络 铝金属 45 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 2679
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Series 9 GPS 铝金属 41 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 2309
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Series 9 GPS 铝金属 45 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 2309
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        }
+      },
+      "Apple Watch Series 8": {
+        "Apple Watch Hermès Series 8（GPS + 蜂窝网络）41 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 3198
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 588
+          }
+        },
+        "Apple Watch Hermès Series 8（GPS + 蜂窝网络）45 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 3198
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 588
+          }
+        },
+        "Apple Watch Series 8（GPS + 蜂窝网络）（不锈钢）41 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 3198
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Series 8（GPS + 蜂窝网络）（不锈钢）45 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 3198
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Series 8（GPS + 蜂窝网络）（铝金属）41 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 2679
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Series 8（GPS + 蜂窝网络）（铝金属）45 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 2679
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Series 8 (GPS)（铝金属）41 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 2309
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Series 8 (GPS)（铝金属）45 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 2309
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        }
+      },
+      "Apple Watch Series 7": {
+        "Apple Watch Edition Series 7（GPS + 蜂窝网络）（钛金属）41 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 3998
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 588
+          }
+        },
+        "Apple Watch Edition Series 7（GPS + 蜂窝网络）（钛金属）45 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 3998
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 588
+          }
+        },
+        "Apple Watch Hermes Series 7（GPS + 蜂窝网络）41 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 3198
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 588
+          }
+        },
+        "Apple Watch Hermes Series 7（GPS + 蜂窝网络）45 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 3198
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 588
+          }
+        },
+        "Apple Watch Nike Series 7（GPS + 蜂窝网络）41 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 2679
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Nike Series 7（GPS + 蜂窝网络）45 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 2679
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Nike Series 7 (GPS) 41 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 2309
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Nike Series 7 (GPS) 45 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 2309
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Series 7（GPS + 蜂窝网络）（铝金属）41 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 2679
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Series 7（GPS + 蜂窝网络）（铝金属）45 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 2679
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Series 7（GPS + 蜂窝网络）（不锈钢）41 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 3198
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Series 7（GPS + 蜂窝网络）（不锈钢）45 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 3198
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Series 7 (GPS)（铝金属）41 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 2309
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Series 7 (GPS)（铝金属）45 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 2309
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        }
+      },
+      "Apple Watch Series 6": {
+        "Apple Watch Series 6（GPS + 蜂窝网络）（铝金属）40 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 2679
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Series 6（GPS + 蜂窝网络）（铝金属）44 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 2679
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Series 6（GPS + 蜂窝网络）（不锈钢）40 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 3198
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Series 6（GPS + 蜂窝网络）（不锈钢）44 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 3198
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Series 6 (GPS)（铝金属）40 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 2309
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Series 6 (GPS)（铝金属）44 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 2309
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Edition Series 6（GPS + 蜂窝网络）（钛金属）40 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 3998
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 588
+          }
+        },
+        "Apple Watch Edition Series 6（GPS + 蜂窝网络）（钛金属）44 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 3998
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 588
+          }
+        },
+        "Apple Watch Hermes Series 6（GPS + 蜂窝网络）40 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 3198
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 588
+          }
+        },
+        "Apple Watch Hermes Series 6（GPS + 蜂窝网络）44 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 3198
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 588
+          }
+        },
+        "Apple Watch Nike Series 6（GPS + 蜂窝网络）40 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 2679
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Nike Series 6（GPS + 蜂窝网络）44 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 2679
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Nike Series 6 (GPS) 40 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 2309
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Nike Series 6 (GPS) 44 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 2309
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        }
+      },
+      "Apple Watch SE": {
+        "Apple Watch SE 3 GPS + 蜂窝网络 40 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 1798
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch SE 3 GPS + 蜂窝网络 44 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 1798
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch SE 3 GPS 40 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 1529
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch SE 3 GPS 44 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 1529
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch SE（第 2 代）（GPS + 蜂窝网络）40 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 1798
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch SE（第 2 代）（GPS + 蜂窝网络）44 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 1798
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch SE（第 2 代）(GPS) 40 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 1529
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch SE（第 2 代）(GPS) 44 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 1529
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Nike SE（GPS + 蜂窝网络）40 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 2048
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Nike SE（GPS + 蜂窝网络）44 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 2048
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Nike SE (GPS) 40 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 1798
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch Nike SE (GPS) 44 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 1798
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch SE（GPS + 蜂窝网络）（铝金属）40 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 2048
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch SE（GPS + 蜂窝网络）（铝金属）44 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 2048
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch SE (GPS)（铝金属）40 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 1798
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        },
+        "Apple Watch SE (GPS)（铝金属）44 毫米": {
+          "oow": {
+            "battery": 809,
+            "other": 1798
+          },
+          "ac": {
+            "battery": 0,
+            "accidental": 528
+          }
+        }
+      }
+    }
+  },
+  "airpods": {
+    "last_updated": "2026-09-08",
+    "category": "AirPods",
+    "series_order": [
+      "AirPods Max",
+      "AirPods Pro",
+      "AirPods"
+    ],
+    "models": {
+      "AirPods Max 2": {
+        "series": "AirPods Max",
+        "oow": {
+          "电池服务": 599,
+          "其他损坏*": "—"
+        },
+        "ac": {
+          "电池服务": 0,
+          "意外损坏": 199
+        }
+      },
+      "AirPods Max 1": {
+        "series": "AirPods Max",
+        "oow": {
+          "电池服务": 599,
+          "其他损坏*": "—"
+        },
+        "ac": {
+          "电池服务": 0,
+          "意外损坏": 199
+        }
+      },
+      "AirPods Pro 3": {
+        "series": "AirPods Pro",
+        "oow": {
+          "电池服务": 399,
+          "AirPod (左侧或右侧) 损坏": 679,
+          "充电盒损坏": 679,
+          "AirPod (左侧或右侧) 丢失": 679,
+          "充电盒丢失": 749
+        },
+        "ac": {
+          "电池服务": 0,
+          "意外损坏": 199
+        }
+      },
+      "AirPods Pro 2 (USB-C)": {
+        "series": "AirPods Pro",
+        "oow": {
+          "电池服务": 399,
+          "AirPod (左侧或右侧) 损坏": 679,
+          "充电盒损坏": 679,
+          "AirPod (左侧或右侧) 丢失": 679,
+          "充电盒丢失": 749
+        },
+        "ac": {
+          "电池服务": 0,
+          "意外损坏": 199
+        }
+      },
+      "AirPods Pro 2（闪电）": {
+        "series": "AirPods Pro",
+        "oow": {
+          "电池服务": 399,
+          "AirPod (左侧或右侧) 损坏": 679,
+          "充电盒损坏": 679,
+          "AirPod (左侧或右侧) 丢失": 679,
+          "充电盒丢失": 749
+        },
+        "ac": {
+          "电池服务": 0,
+          "意外损坏": 199
+        }
+      },
+      "AirPods Pro 1 (MagSafe)": {
+        "series": "AirPods Pro",
+        "oow": {
+          "电池服务": 399,
+          "AirPod (左侧或右侧) 损坏": 679,
+          "充电盒损坏": 679,
+          "AirPod (左侧或右侧) 丢失": 679,
+          "充电盒丢失": 749
+        },
+        "ac": {
+          "电池服务": 0,
+          "意外损坏": 199
+        }
+      },
+      "AirPods Pro 1（无线）": {
+        "series": "AirPods Pro",
+        "oow": {
+          "电池服务": 399,
+          "AirPod (左侧或右侧) 损坏": 679,
+          "充电盒损坏": 679,
+          "AirPod (左侧或右侧) 丢失": 679,
+          "充电盒丢失": 749
+        },
+        "ac": {
+          "电池服务": 0,
+          "意外损坏": 199
+        }
+      },
+      "AirPods 4 (ANC)": {
+        "series": "AirPods",
+        "oow": {
+          "电池服务": 399,
+          "AirPod (左侧或右侧) 损坏": 599,
+          "充电盒损坏": 599,
+          "AirPod (左侧或右侧) 丢失": 599,
+          "充电盒丢失": 661
+        },
+        "ac": {
+          "电池服务": 0,
+          "意外损坏": 199
+        }
+      },
+      "AirPods 4": {
+        "series": "AirPods",
+        "oow": {
+          "电池服务": 399,
+          "AirPod (左侧或右侧) 损坏": 599,
+          "充电盒损坏": 479,
+          "AirPod (左侧或右侧) 丢失": 599,
+          "充电盒丢失": 599
+        },
+        "ac": {
+          "电池服务": 0,
+          "意外损坏": 199
+        }
+      },
+      "AirPods 3 (MagSafe)": {
+        "series": "AirPods",
+        "oow": {
+          "电池服务": 399,
+          "AirPod (左侧或右侧) 损坏": 599,
+          "充电盒损坏": 599,
+          "AirPod (左侧或右侧) 丢失": 599,
+          "充电盒丢失": 661
+        },
+        "ac": {
+          "电池服务": 0,
+          "意外损坏": 199
+        }
+      },
+      "AirPods 3（闪电）": {
+        "series": "AirPods",
+        "oow": {
+          "电池服务": 399,
+          "AirPod (左侧或右侧) 损坏": 599,
+          "充电盒损坏": 479,
+          "AirPod (左侧或右侧) 丢失": 599,
+          "充电盒丢失": 599
+        },
+        "ac": {
+          "电池服务": 0,
+          "意外损坏": 199
+        }
+      },
+      "AirPods 2（无线）": {
+        "series": "AirPods",
+        "oow": {
+          "电池服务": 399,
+          "AirPod (左侧或右侧) 损坏": 599,
+          "充电盒损坏": 599,
+          "AirPod (左侧或右侧) 丢失": 599,
+          "充电盒丢失": 661
+        },
+        "ac": {
+          "电池服务": 0,
+          "意外损坏": 199
+        }
+      },
+      "AirPods 2（闪电）": {
+        "series": "AirPods",
+        "oow": {
+          "电池服务": 399,
+          "AirPod (左侧或右侧) 损坏": 599,
+          "充电盒损坏": 479,
+          "AirPod (左侧或右侧) 丢失": 599,
+          "充电盒丢失": 479
+        },
+        "ac": {
+          "电池服务": 0,
+          "意外损坏": 199
+        }
+      }
+    }
+  },
+  "other": {
+    "last_updated": "2026-09-08",
+    "category": "Other",
+    "series_order": [
+      "Apple 显示器",
+      "Apple Vision Pro",
+      "HomePod"
+    ],
+    "series": {
+      "Apple 显示器": {
+        "Studio Display XDR": {
+          "oow": {
+            "other_text": "由技术人员诊断后报价"
+          },
+          "ac": {
+            "screen": 799,
+            "enclosure": 799,
+            "other_accidental": 2299
+          }
+        },
+        "Studio Display (2026)": {
+          "oow": {
+            "other_text": "由技术人员诊断后报价"
+          },
+          "ac": {
+            "screen": 799,
+            "enclosure": 799,
+            "other_accidental": 2299
+          }
+        },
+        "Pro Display XDR": {
+          "oow": {
+            "other_text": "由技术人员诊断后报价"
+          },
+          "ac": {
+            "screen": 799,
+            "enclosure": 799,
+            "other_accidental": 2299
+          }
+        },
+        "Studio Display": {
+          "oow": {
+            "other_text": "由技术人员诊断后报价"
+          },
+          "ac": {
+            "screen": 799,
+            "enclosure": 799,
+            "other_accidental": 2299
+          }
+        }
+      },
+      "Apple Vision Pro": {
+        "Apple Vision Pro": {
+          "oow": {
+            "cover_glass_single": 0,
+            "cover_glass_multiple": 6549,
+            "other": 19649
+          },
+          "ac": {
+            "other_accidental": 2499
+          }
+        }
+      },
+      "HomePod": {
+        "HomePod（第 2 代）": {
+          "oow": {
+            "other": 2159
+          },
+          "ac": {
+            "accidental": 299
+          }
+        },
+        "HomePod mini": {
+          "oow": {
+            "other": 799
+          },
+          "ac": {
+            "accidental": 115
+          }
+        }
+      }
+    }
+  }
+}

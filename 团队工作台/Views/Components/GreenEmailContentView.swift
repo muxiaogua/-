@@ -11,6 +11,8 @@ public enum GreenEmailBlockType {
     case warningNote(String)
     case compactLine(String)
     case regularParagraph(String)
+    case markdownTable(headers: [String], rows: [[String]])
+    case actionNoticeCard(title: String, items: [String])
 }
 
 public struct GreenEmailBlock: Identifiable {
@@ -62,6 +64,88 @@ public struct GreenEmailContentView: View {
                         .lineSpacing(4)
                         .padding(.vertical, 2)
                         .textSelection(.enabled)
+                        
+                case .actionNoticeCard(let title, let items):
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "checklist.checked")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundColor(.orange)
+                            Text(title)
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(.primary)
+                        }
+                        
+                        VStack(alignment: .leading, spacing: 6) {
+                            ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+                                HStack(alignment: .top, spacing: 6) {
+                                    Circle()
+                                        .fill(Color.orange)
+                                        .frame(width: 5, height: 5)
+                                        .padding(.top, 6)
+                                    Text(LocalizedStringKey(formatLinks(in: item)))
+                                        .font(.system(size: 13))
+                                        .foregroundColor(.primary)
+                                        .lineSpacing(2)
+                                        .textSelection(.enabled)
+                                }
+                            }
+                        }
+                    }
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.orange.opacity(0.06))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(Color.orange.opacity(0.25), lineWidth: 1)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .padding(.vertical, 6)
+                    
+                case .markdownTable(let headers, let rows):
+                    VStack(alignment: .leading, spacing: 0) {
+                        // Table Header
+                        HStack(spacing: 8) {
+                            ForEach(Array(headers.enumerated()), id: \.offset) { idx, header in
+                                Text(header)
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundColor(.primary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Color(NSColor.controlBackgroundColor))
+                        
+                        Divider()
+                        
+                        // Table Rows
+                        ForEach(Array(rows.enumerated()), id: \.offset) { rIdx, row in
+                            HStack(alignment: .top, spacing: 8) {
+                                ForEach(Array(row.enumerated()), id: \.offset) { cIdx, cell in
+                                    Text(LocalizedStringKey(formatLinks(in: cell)))
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.primary)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .textSelection(.enabled)
+                                }
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(rIdx % 2 == 0 ? Color.clear : Color.primary.opacity(0.02))
+                            
+                            if rIdx < rows.count - 1 {
+                                Divider().opacity(0.5)
+                            }
+                        }
+                    }
+                    .background(Color(NSColor.textBackgroundColor))
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                    )
+                    .padding(.vertical, 8)
                 }
             }
         }
@@ -87,6 +171,92 @@ public struct GreenEmailContentView: View {
             if trimmed.isEmpty {
                 i += 1
                 continue
+            }
+            
+            // A. Check if Markdown Table Header line (starts with | and has at least two | separators)
+            if trimmed.hasPrefix("|") && trimmed.filter({ $0 == "|" }).count >= 2 {
+                // Check next line for | :--- | separator
+                if i + 1 < lines.count {
+                    let nextTrimmed = lines[i + 1].trimmingCharacters(in: .whitespaces)
+                    if nextTrimmed.hasPrefix("|") && (nextTrimmed.contains("---") || nextTrimmed.contains("-|-")) {
+                        let headerCells = trimmed.split(separator: "|", omittingEmptySubsequences: true).map { String($0).trimmingCharacters(in: .whitespaces) }
+                        var rowData: [[String]] = []
+                        i += 2 // skip header and divider
+                        
+                        while i < lines.count {
+                            let tableLine = lines[i].trimmingCharacters(in: .whitespaces)
+                            if !tableLine.hasPrefix("|") || tableLine.isEmpty {
+                                break
+                            }
+                            let cells = tableLine.split(separator: "|", omittingEmptySubsequences: true).map { String($0).trimmingCharacters(in: .whitespaces) }
+                            if !cells.isEmpty {
+                                rowData.append(cells)
+                            }
+                            i += 1
+                        }
+                        
+                        blocks.append(GreenEmailBlock(type: .markdownTable(headers: headerCells, rows: rowData)))
+                        continue
+                    }
+                }
+            }
+            
+            // B. Check if Section Header (### 📌 业务操作与流程提醒 或 ### 📋 Records 记录)
+            if trimmed.hasPrefix("### ") {
+                let headerTitle = String(trimmed.dropFirst(4)).trimmingCharacters(in: .whitespaces)
+                
+                // If it's Actionable Notice Header, look ahead for bullet points and nested lines
+                if headerTitle.contains("业务操作") || headerTitle.contains("流程提醒") || headerTitle.contains("注意事项") {
+                    var items: [String] = []
+                    i += 1
+                    var currentItemLines: [String] = []
+                    
+                    while i < lines.count {
+                        let nextL = lines[i]
+                        let nextTrimmed = nextL.trimmingCharacters(in: .whitespaces)
+                        if nextTrimmed.isEmpty {
+                            if !currentItemLines.isEmpty {
+                                items.append(currentItemLines.joined(separator: "\n"))
+                                currentItemLines.removeAll()
+                            }
+                            i += 1
+                            continue
+                        }
+                        if nextTrimmed.hasPrefix("### ") || nextTrimmed.hasPrefix("|") {
+                            break
+                        }
+                        if nextTrimmed.hasPrefix("- ") || nextTrimmed.hasPrefix("• ") || nextTrimmed.hasPrefix("* ") {
+                            if !currentItemLines.isEmpty {
+                                items.append(currentItemLines.joined(separator: "\n"))
+                                currentItemLines.removeAll()
+                            }
+                            let itemText = String(nextTrimmed.dropFirst(2)).trimmingCharacters(in: .whitespaces)
+                            currentItemLines.append(itemText)
+                        } else {
+                            // Sub-lines (e.g. 1. 2. or details)
+                            if !currentItemLines.isEmpty {
+                                currentItemLines.append(nextTrimmed)
+                            } else {
+                                currentItemLines.append(nextTrimmed)
+                            }
+                        }
+                        i += 1
+                    }
+                    if !currentItemLines.isEmpty {
+                        items.append(currentItemLines.joined(separator: "\n"))
+                    }
+                    
+                    if !items.isEmpty {
+                        blocks.append(GreenEmailBlock(type: .actionNoticeCard(title: headerTitle, items: items)))
+                    } else {
+                        blocks.append(GreenEmailBlock(type: .scenarioHeader(headerTitle)))
+                    }
+                    continue
+                } else {
+                    blocks.append(GreenEmailBlock(type: .scenarioHeader(headerTitle)))
+                    i += 1
+                    continue
+                }
             }
             
             // 1. Check if Scenario Header (场景一、场景二、场景三、一、二、等)

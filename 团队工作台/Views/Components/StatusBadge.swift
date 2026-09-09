@@ -64,6 +64,7 @@ public struct CategoryTag: View {
         switch category {
         case .all: return .accentColor
         case .greenEmail: return .green
+        case .slackSupport: return .purple
         }
     }
 }

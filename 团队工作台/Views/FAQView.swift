@@ -292,35 +292,37 @@ public struct FAQView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 6))
             }
             
-            // Sync Button
-            Button(action: {
-                _ = chorusSync.syncChorusAll(into: store)
-                showSyncAlert = true
-            }) {
-                HStack(spacing: 5) {
-                    if chorusSync.isSyncing {
-                        ProgressView()
-                            .controlSize(.small)
-                    } else {
-                        Image(systemName: "arrow.triangle.2.circlepath")
-                            .font(.system(size: 11, weight: .semibold))
+            // Sync Button (Only visible for users with sync permission)
+            if store.canCurrentUserSyncData {
+                Button(action: {
+                    _ = chorusSync.syncChorusAll(into: store)
+                    showSyncAlert = true
+                }) {
+                    HStack(spacing: 5) {
+                        if chorusSync.isSyncing {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                                .font(.system(size: 11, weight: .semibold))
+                        }
+                        Text("同步最新 Chorus")
+                            .font(.system(size: 12, weight: .medium))
                     }
-                    Text("同步最新 Chorus")
-                        .font(.system(size: 12, weight: .medium))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color(NSColor.controlBackgroundColor))
+                    .foregroundColor(.accentColor)
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(Color.accentColor.opacity(0.5), lineWidth: 1)
+                    )
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(Color(NSColor.controlBackgroundColor))
-                .foregroundColor(.accentColor)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 6)
-                        .stroke(Color.accentColor.opacity(0.5), lineWidth: 1)
-                )
+                .buttonStyle(.plain)
+                .disabled(chorusSync.isSyncing)
+                .help("从 Chorus 知识库 (RCC:5530436 / ARS:7345748 / AASP:7312138 / BTS:8034582 / AA:7982276 / SDA:7861236 / Apple TV:7550958) 提取并刷新最新问答")
             }
-            .buttonStyle(.plain)
-            .disabled(chorusSync.isSyncing)
-            .help("从 Chorus 知识库 (RCC:5530436 / ARS:7345748 / AASP:7312138 / BTS:8034582 / AA:7982276 / SDA:7861236 / Apple TV:7550958) 提取并刷新最新问答")
         }
     }
     

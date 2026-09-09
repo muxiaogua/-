@@ -10,24 +10,30 @@ public struct DashboardView: View {
     @EnvironmentObject var store: WorkbenchStore
     @State private var showingAcknowledgeSuccessAlert = false
     @State private var acknowledgedTitle = ""
+    @State private var npiItems: [NpiIssueItem] = []
+    
+    private let npiStorageKey = "workbench_npi_issues_v1"
     
     public init() {}
     
     public var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                // 1. Top 5 Mini Summary Cards
-                topSummaryCardsRow
-                
-                // 2. Announcements Section (置顶与最新发布规范)
+                // 1. 团队公告（置顶公告 + 未读公告）
                 teamAnnouncementsSection
                 
-                // 3. Important News & Mails Section (AASP 业务资讯与工程简报)
+                // 2. 🔥 NPI 重点（每日更新议题速查）
+                npiIssuesSection
+                
+                // 3. 重要邮件（仅显示近一周的更新）
                 importantNewsSection
             }
             .padding(24)
         }
         .background(Color(NSColor.windowBackgroundColor))
+        .onAppear {
+            loadNpiData()
+        }
         .alert("确认已读", isPresented: $showingAcknowledgeSuccessAlert) {
             Button("确定", role: .cancel) { }
         } message: {
@@ -35,118 +41,22 @@ public struct DashboardView: View {
         }
     }
     
-    // MARK: - 1. Top Mini Summary Cards
+    // MARK: - 1. Announcements Section (置顶公告 + 未读公告)
     
-    private var todayShiftSummaryText: String {
-        if let shift = store.todayShift {
-            if shift.isOff {
-                return "休假"
+    /// 过滤规则：置顶公告始终保留；非置顶公告仅显示当前用户未读/未确认的公告
+    private var filteredAnnouncements: [Announcement] {
+        store.announcements.filter { item in
+            if item.isPinned {
+                return true
             }
-            return "\(shift.workStart)"
-        }
-        return "班表"
-    }
-    
-    private var topSummaryCardsRow: some View {
-        LazyVGrid(columns: [
-            GridItem(.flexible(), spacing: 14),
-            GridItem(.flexible(), spacing: 14),
-            GridItem(.flexible(), spacing: 14),
-            GridItem(.flexible(), spacing: 14),
-            GridItem(.flexible(), spacing: 14),
-            GridItem(.flexible(), spacing: 14)
-        ], spacing: 14) {
-            miniStatCard(
-                title: "今日班次",
-                count: todayShiftSummaryText,
-                badge: "作息",
-                color: Color.purple,
-                action: { store.selectedNavigation = .shifts }
-            )
-            
-            miniStatCard(
-                title: "未读公告",
-                count: "\(store.todayUnreadAnnouncementsCount)",
-                badge: "今日",
-                color: Color.orange,
-                action: { store.selectedNavigation = .announcements }
-            )
-            
-            miniStatCard(
-                title: "未读邮件",
-                count: "\(store.todayUnreadNewsCount)",
-                badge: "今日",
-                color: Color.green,
-                action: { store.selectedNavigation = .news }
-            )
-            
-            miniStatCard(
-                title: "知识FAQ",
-                count: "\(store.faqItems.count)",
-                badge: "FAQ",
-                color: Color.blue,
-                action: { store.selectedNavigation = .faq }
-            )
-            
-            miniStatCard(
-                title: "我的收藏",
-                count: "\(store.bookmarkedNews.count)",
-                badge: "精益",
-                color: Color(red: 0.88, green: 0.15, blue: 0.35),
-                action: { store.selectedNavigation = .news }
-            )
-            
-            miniStatCard(
-                title: "今日待领",
-                count: "\(store.todayUnacknowledgedCount)",
-                badge: "待领",
-                color: Color(red: 0.90, green: 0.20, blue: 0.25),
-                action: { store.selectedNavigation = .announcements }
-            )
-        }
-    }
-    
-    private func miniStatCard(
-        title: String,
-        count: String,
-        badge: String,
-        color: Color,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text(title)
-                        .font(.system(size: 11.5, weight: .medium))
-                        .foregroundColor(.secondary)
-                    
-                    Spacer()
-                    
-                    Text(badge)
-                        .font(.system(size: 10, weight: .semibold))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(color.opacity(0.12))
-                        .foregroundColor(color)
-                        .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
-                }
-                
-                Text(count)
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                    .foregroundColor(color)
+            let isAcked = item.isAcknowledged || item.acknowledgments.contains(where: { $0.memberName == store.currentUser.name })
+            if item.requiresAcknowledgment {
+                return !isAcked
+            } else {
+                return !store.readAnnouncementIDs.contains(item.id)
             }
-            .padding(14)
-            .background(Color(NSColor.controlBackgroundColor))
-            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .stroke(Color.secondary.opacity(0.12), lineWidth: 1)
-            )
         }
-        .buttonStyle(.plain)
     }
-    
-    // MARK: - 2. Announcements Section
     
     private var teamAnnouncementsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -160,9 +70,14 @@ public struct DashboardView: View {
                     .font(.system(size: 15, weight: .bold))
                     .foregroundColor(.primary)
                 
+                Text("（置顶与未读）")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+                
                 Spacer()
                 
                 Button(action: {
+                    store.selectedCategory = .teamShare
                     store.selectedNavigation = .announcements
                 }) {
                     HStack(spacing: 4) {
@@ -177,29 +92,33 @@ public struct DashboardView: View {
             }
             
             // 3-Column Announcements Cards Grid
-            if store.announcements.isEmpty {
+            if filteredAnnouncements.isEmpty {
                 HStack {
                     Spacer()
                     VStack(spacing: 8) {
-                        Image(systemName: "megaphone")
+                        Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 30))
-                            .foregroundColor(.secondary.opacity(0.4))
-                        Text("暂无团队公告")
-                            .font(.system(size: 13))
+                            .foregroundColor(.green.opacity(0.6))
+                        Text("太棒了！所有公告均已阅读完毕")
+                            .font(.system(size: 13, weight: .medium))
                             .foregroundColor(.secondary)
                     }
-                    .padding(32)
+                    .padding(28)
                     Spacer()
                 }
                 .background(Color(NSColor.controlBackgroundColor))
                 .clipShape(RoundedRectangle(cornerRadius: 10))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color.secondary.opacity(0.12), lineWidth: 1)
+                )
             } else {
                 LazyVGrid(columns: [
                     GridItem(.flexible(), spacing: 14),
                     GridItem(.flexible(), spacing: 14),
                     GridItem(.flexible(), spacing: 14)
                 ], spacing: 14) {
-                    ForEach(store.announcements.prefix(6)) { item in
+                    ForEach(filteredAnnouncements.prefix(6)) { item in
                         announcementCard(for: item)
                     }
                 }
@@ -318,7 +237,177 @@ public struct DashboardView: View {
         )
     }
     
-    // MARK: - 3. Important News & Mails Section
+    // MARK: - 2. NPI 重点 Section (每日更新)
+    
+    private var recentNpiItems: [NpiIssueItem] {
+        // 优先展示最新录入/更新的 NPI 议题
+        Array(npiItems.prefix(6))
+    }
+    
+    private var npiIssuesSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            // Section Header
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(Color.red)
+                    .frame(width: 8, height: 8)
+                
+                Text("🔥 NPI 重点")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundColor(.primary)
+                
+                Text("（每日更新议题）")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+                
+                Spacer()
+                
+                Button(action: {
+                    store.selectedCategory = .npiFocus
+                    store.selectedNavigation = .npiQuery
+                }) {
+                    HStack(spacing: 4) {
+                        Text("进入 NPI 检索")
+                            .font(.system(size: 12, weight: .medium))
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 10, weight: .bold))
+                    }
+                    .foregroundColor(.accentColor)
+                }
+                .buttonStyle(.plain)
+            }
+            
+            if recentNpiItems.isEmpty {
+                HStack {
+                    Spacer()
+                    VStack(spacing: 8) {
+                        Image(systemName: "flame")
+                            .font(.system(size: 30))
+                            .foregroundColor(.secondary.opacity(0.4))
+                        Text("暂无 NPI 重点议题记录（可前往「NPI 检索」从邮件自动导入）")
+                            .font(.system(size: 13))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(28)
+                    Spacer()
+                }
+                .background(Color(NSColor.controlBackgroundColor))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color.secondary.opacity(0.12), lineWidth: 1)
+                )
+            } else {
+                LazyVGrid(columns: [
+                    GridItem(.flexible(), spacing: 14),
+                    GridItem(.flexible(), spacing: 14),
+                    GridItem(.flexible(), spacing: 14)
+                ], spacing: 14) {
+                    ForEach(recentNpiItems) { item in
+                        npiCard(for: item)
+                    }
+                }
+            }
+        }
+    }
+    
+    private func npiCard(for item: NpiIssueItem) -> some View {
+        Button(action: {
+            store.selectedCategory = .npiFocus
+            store.selectedNavigation = .npiQuery
+        }) {
+            VStack(alignment: .leading, spacing: 8) {
+                // Top Row: Product Tag + Status Badge + Date
+                HStack(spacing: 6) {
+                    Text(item.productType)
+                        .font(.system(size: 10.5, weight: .bold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.blue.opacity(0.12))
+                        .foregroundColor(.blue)
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                    
+                    Text(item.status)
+                        .font(.system(size: 10, weight: .semibold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(npiStatusColor(item.status).opacity(0.12))
+                        .foregroundColor(npiStatusColor(item.status))
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                    
+                    Spacer()
+                    
+                    Text(item.date)
+                        .font(.system(size: 10.5))
+                        .foregroundColor(.secondary)
+                }
+                
+                // Issue ID & Title
+                HStack(alignment: .top, spacing: 4) {
+                    Text(item.id)
+                        .font(.system(size: 12.5, weight: .bold, design: .monospaced))
+                        .foregroundColor(.red)
+                    
+                    Text(item.title)
+                        .font(.system(size: 12.5, weight: .bold))
+                        .foregroundColor(.primary)
+                        .lineLimit(1)
+                }
+                
+                // Description Snippet
+                Text(item.desc)
+                    .font(.system(size: 11.5))
+                    .foregroundColor(.secondary)
+                    .lineLimit(2)
+                    .lineSpacing(2)
+                
+                Spacer(minLength: 2)
+                
+                // Guidance Box
+                HStack(alignment: .top, spacing: 4) {
+                    Image(systemName: "lightbulb.fill")
+                        .font(.system(size: 9.5))
+                        .foregroundColor(.orange)
+                        .padding(.top, 1)
+                    Text(item.guidance)
+                        .font(.system(size: 11))
+                        .foregroundColor(.primary.opacity(0.85))
+                        .lineLimit(2)
+                }
+                .padding(6)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.orange.opacity(0.06))
+                .clipShape(RoundedRectangle(cornerRadius: 5))
+            }
+            .padding(12)
+            .frame(minHeight: 145)
+            .background(Color(NSColor.controlBackgroundColor))
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(Color.secondary.opacity(0.12), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+    
+    private func npiStatusColor(_ status: String) -> Color {
+        switch status {
+        case "需提交RTA": return .red
+        case "无需RTA": return .gray
+        case "积极投票": return .orange
+        case "已修复": return .green
+        default: return .blue
+        }
+    }
+    
+    // MARK: - 3. Important News & Mails Section (仅显示近一周)
+    
+    /// 仅保留发布时间在近 7 天内的邮件
+    private var pastWeekNewsArticles: [NewsArticle] {
+        let sevenDaysAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date().addingTimeInterval(-7 * 86400)
+        return store.newsArticles.filter { $0.publishDate >= sevenDaysAgo }
+    }
     
     private var importantNewsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -332,9 +421,14 @@ public struct DashboardView: View {
                     .font(.system(size: 15, weight: .bold))
                     .foregroundColor(.primary)
                 
+                Text("（近一周更新）")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+                
                 Spacer()
                 
                 Button(action: {
+                    store.selectedCategory = .queryCenter
                     store.selectedNavigation = .news
                 }) {
                     HStack(spacing: 4) {
@@ -349,29 +443,33 @@ public struct DashboardView: View {
             }
             
             // 3-Column News Cards Grid
-            if store.newsArticles.isEmpty {
+            if pastWeekNewsArticles.isEmpty {
                 HStack {
                     Spacer()
                     VStack(spacing: 8) {
                         Image(systemName: "envelope.open")
                             .font(.system(size: 30))
                             .foregroundColor(.secondary.opacity(0.4))
-                        Text("暂无重要邮件")
+                        Text("近一周内暂无更新的邮件")
                             .font(.system(size: 13))
                             .foregroundColor(.secondary)
                     }
-                    .padding(32)
+                    .padding(28)
                     Spacer()
                 }
                 .background(Color(NSColor.controlBackgroundColor))
                 .clipShape(RoundedRectangle(cornerRadius: 10))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color.secondary.opacity(0.12), lineWidth: 1)
+                )
             } else {
                 LazyVGrid(columns: [
                     GridItem(.flexible(), spacing: 14),
                     GridItem(.flexible(), spacing: 14),
                     GridItem(.flexible(), spacing: 14)
                 ], spacing: 14) {
-                    ForEach(store.newsArticles.prefix(6)) { article in
+                    ForEach(pastWeekNewsArticles.prefix(6)) { article in
                         newsCard(for: article)
                     }
                 }
@@ -425,6 +523,7 @@ public struct DashboardView: View {
             
             // Bottom Action Link
             Button(action: {
+                store.selectedCategory = .queryCenter
                 store.selectedNewsArticleID = article.id
                 store.selectedNavigation = .news
             }) {
@@ -448,7 +547,14 @@ public struct DashboardView: View {
         )
     }
     
-    // MARK: - Date Formatters
+    // MARK: - Helpers
+    
+    private func loadNpiData() {
+        if let data = UserDefaults.standard.data(forKey: npiStorageKey),
+           let decoded = try? JSONDecoder().decode([NpiIssueItem].self, from: data) {
+            self.npiItems = decoded
+        }
+    }
     
     private func formatShortDate(_ date: Date) -> String {
         let df = DateFormatter()

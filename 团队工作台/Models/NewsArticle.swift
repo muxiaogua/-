@@ -8,6 +8,7 @@ import Foundation
 public enum NewsCategory: String, Codable, CaseIterable, Identifiable {
     case all = "全部"
     case greenEmail = "Green Email"
+    case slackSupport = "Slack Support"
     
     public var id: String { rawValue }
     
@@ -15,6 +16,7 @@ public enum NewsCategory: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .all: return "tray.full.fill"
         case .greenEmail: return "envelope.fill"
+        case .slackSupport: return "bubble.left.and.bubble.right.fill"
         }
     }
 }

@@ -65,6 +65,7 @@
 			);
 			name = "团队工作台";
 			packageProductDependencies = (
+				9B0000023046D00000000002 /* RelaxKit */,
 			);
 			productName = "团队工作台";
 			productReference = 35D997123046D244006E4C33 /* 团队工作台.app */;
@@ -98,11 +99,29 @@
 			productRefGroup = 35D997133046D244006E4C33 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
+			packageReferences = (
+				9B0000013046D00000000001 /* XCLocalSwiftPackageReference "../../Downloads/RelaxKit" */,
+			);
 			targets = (
 				35D997113046D244006E4C33 /* 团队工作台 */,
 			);
 		};
 /* End PBXProject section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		9B0000013046D00000000001 /* XCLocalSwiftPackageReference "../../Downloads/RelaxKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "../../Downloads/RelaxKit";
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		9B0000023046D00000000002 /* RelaxKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9B0000013046D00000000001 /* XCLocalSwiftPackageReference "../../Downloads/RelaxKit" */;
+			productName = RelaxKit;
+		};
+/* End XCSwiftPackageProductDependency section */
 
 /* Begin PBXResourcesBuildPhase section */
 		35D997103046D244006E4C33 /* Resources */ = {

@@ -215,19 +215,53 @@ public struct SettingsView: View {
                 
                 Spacer()
                 
-                Button(action: {
-                    editName = store.currentUser.name
-                    editAvatar = store.currentUser.avatarSymbol
-                    showEditProfileSheet = true
-                }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "pencil")
-                        Text("修改名称与头像")
+                VStack(alignment: .trailing, spacing: 6) {
+                    Button(action: {
+                        editName = store.currentUser.name
+                        editAvatar = store.currentUser.avatarSymbol
+                        showEditProfileSheet = true
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "pencil")
+                            Text("修改名称与头像")
+                        }
+                        .font(.system(size: 12))
                     }
-                    .font(.system(size: 12))
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    
+                    // 开发测试快捷身份切换
+                    if isDefaultAdmin {
+                        Button(action: {
+                            store.updateCurrentUser(name: "TestUser", avatarSymbol: "person.circle")
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "person.badge.shield.checkmark")
+                                Text("🧪 切换为测试普通成员 (TestUser)")
+                            }
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.purple)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .help("一键切换为无管理员权限的普通成员，用于体验普通成员界面和权限校验")
+                    } else if store.currentUser.name == "TestUser" {
+                        Button(action: {
+                            store.updateCurrentUser(name: "Beauty", avatarSymbol: "person.crop.circle.fill.badge.checkmark")
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "crown.fill")
+                                Text("👑 恢复为超级管理员 (Beauty)")
+                            }
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(.orange)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.orange)
+                        .controlSize(.small)
+                        .help("一键恢复为超级管理员身份")
+                    }
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
             }
             .padding(16)
             .background(Color(NSColor.controlBackgroundColor))
