@@ -7,10 +7,14 @@ import Foundation
 
 public struct MIMEHTMLParser {
     /// Extracts and decodes the HTML body from a raw RFC822 / MIME email source string.
+    /// 同时自动扫描并内联全部 CID 图片附件为 Base64 data:image URL，确保图片脱机 100% 可见
     public static func extractHTML(from rawSource: String) -> String? {
         let normalized = rawSource.replacingOccurrences(of: "\r\n", with: "\n").replacingOccurrences(of: "\r", with: "\n")
         
-        // 1. Find all boundary strings defined anywhere in the message headers or sub-headers
+        // 1. 扫描邮件源文件中所有的图片附件（抽取 Content-ID 与 Base64 数据）
+        let cidImageMap = extractCIDImageMap(from: normalized)
+        
+        // 2. Find all boundary strings defined anywhere in the message headers or sub-headers
         var boundaries: [String] = []
         let boundaryPattern = #"(?i)boundary\s*=\s*["']?([^"';\n\r]+)["']?"#
         if let regex = try? NSRegularExpression(pattern: boundaryPattern) {
@@ -25,7 +29,9 @@ public struct MIMEHTMLParser {
             }
         }
         
-        // 2. Iterate through all boundary chunks to find the exact leaf text/html part
+        var extractedHTML: String? = nil
+        
+        // 3. Iterate through all boundary chunks to find the exact leaf text/html part
         for boundary in boundaries {
             let delimiter = "--" + boundary
             let rawParts = normalized.components(separatedBy: delimiter)
@@ -57,51 +63,199 @@ public struct MIMEHTMLParser {
                 body = body.trimmingCharacters(in: .whitespacesAndNewlines)
                 
                 if isQP {
-                    return decodeQuotedPrintable(body, charset: charset)
+                    extractedHTML = decodeQuotedPrintable(body, charset: charset)
                 } else if isB64 {
                     let cleanB64 = body.components(separatedBy: .whitespacesAndNewlines).joined()
                     if let data = Data(base64Encoded: cleanB64) {
-                        return decodeDataWithCharset(data, charset: charset)
+                        extractedHTML = decodeDataWithCharset(data, charset: charset)
                     }
                 } else {
-                    // If body contains Quoted-Printable artifacts like =3D or =E4=
                     if body.contains("=3D") || body.contains("=E4=") || body.contains("=E5=") || body.contains("=20") {
-                        return decodeQuotedPrintable(body, charset: charset)
-                    }
-                    return body
-                }
-            }
-        }
-        
-        // 3. Regex Fallback: Scan directly for leaf text/html part header and its body
-        let partPattern = #"(?i)(?:^|\n)--[^\n]+\n([^\n]*?Content-Type:\s*text/html[^\n]*\n[\s\S]*?\n\n)([\s\S]*?)(?=\n--|\Z)"#
-        if let regex = try? NSRegularExpression(pattern: partPattern) {
-            if let match = regex.firstMatch(in: normalized, options: [], range: NSRange(location: 0, length: normalized.utf16.count)) {
-                if match.numberOfRanges >= 3,
-                   let headerRange = Range(match.range(at: 1), in: normalized),
-                   let bodyRange = Range(match.range(at: 2), in: normalized) {
-                    let headerBlock = String(normalized[headerRange])
-                    let body = String(normalized[bodyRange]).trimmingCharacters(in: .whitespacesAndNewlines)
-                    
-                    let isQP = headerBlock.range(of: "quoted-printable", options: .caseInsensitive) != nil || body.contains("=3D") || body.contains("=E4=")
-                    let isB64 = headerBlock.range(of: "base64", options: .caseInsensitive) != nil
-                    let charset = extractCharset(from: headerBlock)
-                    
-                    if isQP {
-                        return decodeQuotedPrintable(body, charset: charset)
-                    } else if isB64 {
-                        let cleanB64 = body.components(separatedBy: .whitespacesAndNewlines).joined()
-                        if let data = Data(base64Encoded: cleanB64) {
-                            return decodeDataWithCharset(data, charset: charset)
-                        }
+                        extractedHTML = decodeQuotedPrintable(body, charset: charset)
                     } else {
-                        return body
+                        extractedHTML = body
+                    }
+                }
+                break
+            }
+            if extractedHTML != nil { break }
+        }
+        
+        // 4. Regex Fallback: Scan directly for leaf text/html part header and its body
+        if extractedHTML == nil {
+            let partPattern = #"(?i)(?:^|\n)--[^\n]+\n([^\n]*?Content-Type:\s*text/html[^\n]*\n[\s\S]*?\n\n)([\s\S]*?)(?=\n--|\Z)"#
+            if let regex = try? NSRegularExpression(pattern: partPattern) {
+                if let match = regex.firstMatch(in: normalized, options: [], range: NSRange(location: 0, length: normalized.utf16.count)) {
+                    if match.numberOfRanges >= 3,
+                       let headerRange = Range(match.range(at: 1), in: normalized),
+                       let bodyRange = Range(match.range(at: 2), in: normalized) {
+                        let headerBlock = String(normalized[headerRange])
+                        let body = String(normalized[bodyRange]).trimmingCharacters(in: .whitespacesAndNewlines)
+                        
+                        let isQP = headerBlock.range(of: "quoted-printable", options: .caseInsensitive) != nil || body.contains("=3D") || body.contains("=E4=")
+                        let isB64 = headerBlock.range(of: "base64", options: .caseInsensitive) != nil
+                        let charset = extractCharset(from: headerBlock)
+                        
+                        if isQP {
+                            extractedHTML = decodeQuotedPrintable(body, charset: charset)
+                        } else if isB64 {
+                            let cleanB64 = body.components(separatedBy: .whitespacesAndNewlines).joined()
+                            if let data = Data(base64Encoded: cleanB64) {
+                                extractedHTML = decodeDataWithCharset(data, charset: charset)
+                            }
+                        } else {
+                            extractedHTML = body
+                        }
                     }
                 }
             }
         }
         
-        return nil
+        guard let finalHTML = extractedHTML else { return nil }
+        
+        // 5. 将提取出的 HTML 中的 CID 图片地址无感替换为 Base64 内联图片
+        return inlineCIDImages(in: finalHTML, using: cidImageMap)
+    }
+    
+    // MARK: - CID 附件图像提取器 (自动扫描邮件各多分卷中的图片并生成 Base64 Data URL)
+    private static func extractCIDImageMap(from normalized: String) -> [String: String] {
+        var cidMap: [String: String] = [:]
+        
+        // 寻找每个包含 image/ 的分卷
+        let partSplitter = #"(?i)\n--[^\n]+\n"#
+        guard let regex = try? NSRegularExpression(pattern: partSplitter) else { return cidMap }
+        
+        let matches = regex.matches(in: normalized, options: [], range: NSRange(location: 0, length: normalized.utf16.count))
+        var chunkRanges: [Range<String.Index>] = []
+        var lastIdx = normalized.startIndex
+        for m in matches {
+            if let r = Range(m.range, in: normalized) {
+                if lastIdx < r.lowerBound {
+                    chunkRanges.append(lastIdx..<r.lowerBound)
+                }
+                lastIdx = r.upperBound
+            }
+        }
+        if lastIdx < normalized.endIndex {
+            chunkRanges.append(lastIdx..<normalized.endIndex)
+        }
+        
+        for range in chunkRanges {
+            let chunk = String(normalized[range])
+            guard let doubleNewline = chunk.range(of: "\n\n") else { continue }
+            let headers = String(chunk[..<doubleNewline.lowerBound])
+            
+            // 必须是图片类型
+            guard headers.range(of: "Content-Type:\\s*image/", options: [.regularExpression, .caseInsensitive]) != nil else {
+                continue
+            }
+            
+            // 提取 mime 类型 (image/png, image/jpeg, image/tiff 等)
+            var mimeType = "image/png"
+            if let mimeRegex = try? NSRegularExpression(pattern: #"(?i)Content-Type:\s*(image/[a-zA-Z0-9\-\+\.]+)"#),
+               let match = mimeRegex.firstMatch(in: headers, range: NSRange(headers.startIndex..., in: headers)),
+               let r = Range(match.range(at: 1), in: headers) {
+                mimeType = String(headers[r]).lowercased()
+            }
+            
+            // 提取 Content-ID: <xxx>
+            var contentID: String? = nil
+            if let cidRegex = try? NSRegularExpression(pattern: #"(?i)Content-ID:\s*<([^>]+)>"#),
+               let match = cidRegex.firstMatch(in: headers, range: NSRange(headers.startIndex..., in: headers)),
+               let r = Range(match.range(at: 1), in: headers) {
+                contentID = String(headers[r]).trimmingCharacters(in: .whitespaces)
+            }
+            
+            // 提取文件名 filename="xxx" 或 name="xxx"
+            var filename: String? = nil
+            if let fnRegex = try? NSRegularExpression(pattern: #"(?i)(?:filename|name)=["']?([^"';\n\r]+)["']?"#),
+               let match = fnRegex.firstMatch(in: headers, range: NSRange(headers.startIndex..., in: headers)),
+               let r = Range(match.range(at: 1), in: headers) {
+                filename = String(headers[r]).trimmingCharacters(in: .whitespaces)
+            }
+            
+            // 提取 Base64 编码的图片数据
+            var rawBody = String(chunk[doubleNewline.upperBound...])
+            if let endPos = rawBody.range(of: "\n--") {
+                rawBody = String(rawBody[..<endPos.lowerBound])
+            }
+            let cleanB64 = rawBody.components(separatedBy: .whitespacesAndNewlines).joined()
+            guard !cleanB64.isEmpty, cleanB64.count > 100 else { continue }
+            
+            let dataUrl = "data:\(mimeType);base64,\(cleanB64)"
+            
+            if let cid = contentID {
+                cidMap[cid.lowercased()] = dataUrl
+                cidMap["cid:" + cid.lowercased()] = dataUrl
+            }
+            if let fn = filename {
+                let cleanFn = fn.lowercased().replacingOccurrences(of: "%20", with: " ")
+                cidMap[cleanFn] = dataUrl
+                cidMap["cid:" + cleanFn] = dataUrl
+            }
+        }
+        
+        return cidMap
+    }
+    
+    // MARK: - 将 HTML 中的 CID 引用安全替换为 Data URL
+    private static func inlineCIDImages(in html: String, using cidMap: [String: String]) -> String {
+        guard !cidMap.isEmpty else { return html }
+        var result = html
+        
+        // 匹配各类 <img ... src="cid:..." 或 id="<...>" 或 alt="..." 属性>
+        let imgPattern = #"(?i)<img\b[^>]*>"#
+        guard let imgRegex = try? NSRegularExpression(pattern: imgPattern) else { return html }
+        
+        let matches = imgRegex.matches(in: html, range: NSRange(html.startIndex..., in: html))
+        // 从后往前替换，保持字符索引有效
+        for match in matches.reversed() {
+            guard let r = Range(match.range, in: result) else { continue }
+            let imgTag = String(result[r])
+            
+            var matchedDataUrl: String? = nil
+            
+            // 1. 尝试从 src="cid:..." 匹配
+            if let srcRegex = try? NSRegularExpression(pattern: #"(?i)src=["']?(?:cid:)?([^"'\s>]+)["']?"#),
+               let srcMatch = srcRegex.firstMatch(in: imgTag, range: NSRange(imgTag.startIndex..., in: imgTag)),
+               let srcRange = Range(srcMatch.range(at: 1), in: imgTag) {
+                let srcVal = String(imgTag[srcRange]).lowercased().replacingOccurrences(of: "%20", with: " ").trimmingCharacters(in: CharacterSet(charactersIn: "<>\"' "))
+                matchedDataUrl = cidMap[srcVal] ?? cidMap["cid:" + srcVal]
+            }
+            
+            // 2. 尝试从 alt="..." 文件名匹配
+            if matchedDataUrl == nil {
+                if let altRegex = try? NSRegularExpression(pattern: #"(?i)alt=["']([^"']+)["']"#),
+                   let altMatch = altRegex.firstMatch(in: imgTag, range: NSRange(imgTag.startIndex..., in: imgTag)),
+                   let altRange = Range(altMatch.range(at: 1), in: imgTag) {
+                    let altVal = String(imgTag[altRange]).lowercased().replacingOccurrences(of: "%20", with: " ").replacingOccurrences(of: "\u{202F}", with: " ").trimmingCharacters(in: .whitespaces)
+                    matchedDataUrl = cidMap[altVal]
+                }
+            }
+            
+            // 3. 尝试从 id="<...>" 匹配
+            if matchedDataUrl == nil {
+                if let idRegex = try? NSRegularExpression(pattern: #"(?i)id=["']?(?:&lt;|<)?([^"'>&]+)(?:&gt;|>)?["']?"#),
+                   let idMatch = idRegex.firstMatch(in: imgTag, range: NSRange(imgTag.startIndex..., in: imgTag)),
+                   let idRange = Range(idMatch.range(at: 1), in: imgTag) {
+                    let idVal = String(imgTag[idRange]).lowercased().trimmingCharacters(in: CharacterSet(charactersIn: "<>\"' "))
+                    matchedDataUrl = cidMap[idVal] ?? cidMap["cid:" + idVal]
+                }
+            }
+            
+            // 如果找到了匹配的图片 Base64，替换此 <img> 的 src
+            if let dataUrl = matchedDataUrl {
+                var newImgTag = imgTag
+                if let replaceSrcRegex = try? NSRegularExpression(pattern: #"(?i)src=["'][^"']*["']"#) {
+                    newImgTag = replaceSrcRegex.stringByReplacingMatches(in: newImgTag, range: NSRange(newImgTag.startIndex..., in: newImgTag), withTemplate: "src=\"\(dataUrl)\"")
+                } else {
+                    newImgTag = newImgTag.replacingOccurrences(of: "<img", with: "<img src=\"\(dataUrl)\"")
+                }
+                result.replaceSubrange(r, with: newImgTag)
+            }
+        }
+        
+        return result
     }
     
     private static func extractCharset(from headerBlock: String) -> String {

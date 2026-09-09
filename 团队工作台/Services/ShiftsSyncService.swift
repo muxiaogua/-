@@ -591,7 +591,14 @@ public class ShiftsSyncService: NSObject, ObservableObject, WKNavigationDelegate
         if lower.contains("training") || lower.contains("培训") || lower.contains("sgt") || lower.contains("dev") || lower.contains("workshop") || lower.contains("learn") {
             return .training
         }
-        if lower.contains("commtg") || lower.contains("teammtg") || lower.contains("meeting") || lower.contains("mtg") || lower.contains("组会") || lower.contains("例会") || lower.contains("1 on 1") || lower.contains("1:1") || lower.contains("1-1") || lower.contains("coaching") || lower.contains("sync") || lower.contains("huddle") {
+        if lower.contains("commtg") {
+            return .meeting
+        }
+        if lower.contains("team meeting") || lower.contains("teammtg") || lower.contains("组会") || lower.contains("例会") || lower.contains("huddle") {
+            return .meeting
+        }
+        // 精准匹配 1:1 辅导，严防误伤带有 1:10 / 11:15 等时间数字
+        if isOneOnOneCoaching(line: line) {
             return .meeting
         }
         if lower.contains("off") || lower.contains("休假") {
@@ -604,41 +611,72 @@ public class ShiftsSyncService: NSObject, ObservableObject, WKNavigationDelegate
         let clean = line.trimmingCharacters(in: .whitespaces)
         let lower = clean.lowercased()
         
-        if lower.contains("special") || lower.contains("time off") || lower.contains("planned time away") || lower.contains("time away") {
-            if lower.contains("full") {
-                return "全天请假 (Time Off)"
-            } else if lower.contains("partial") {
-                return "部分请假 (Time Off)"
-            }
-            return "请假 (Time Off)"
+        if lower.contains("special") || lower.contains("time off") || lower.contains("planned time away") || lower.contains("time away") || lower.contains("pto") || lower.contains("vto") || lower.contains("vacation") || lower.contains("sick") || lower.contains("leave") || lower.contains("请假") || lower.contains("年假") || lower.contains("病假") || lower.contains("事假") {
+            return "Time Off"
         }
         if lower.contains("commtg") {
-            return "COMMTG (会议)"
+            return "COMMTG"
         }
-        if lower.contains("teammtg") {
-            return "Team Meeting (组会)"
+        if lower.contains("team meeting") || lower.contains("teammtg") || lower.contains("组会") || lower.contains("例会") {
+            return "Team Meeting"
         }
-        if lower.contains("1 on 1") || lower.contains("1:1") || lower.contains("1-1") {
-            return "1:1 辅导"
+        if isOneOnOneCoaching(line: clean) {
+            return "1:1 Coaching"
         }
         if lower.contains("sgt") {
-            return "SGT 自学培训"
+            return "SGT"
+        }
+        if lower.contains("break") || lower.contains("小休") || lower.contains("brk") {
+            return "Break"
+        }
+        if lower.contains("lunch") || lower.contains("午餐") || lower.contains("meal") || lower.contains("dinner") {
+            return "Lunch"
+        }
+        if lower.contains("training") || lower.contains("培训") {
+            return "Training"
+        }
+        if lower.contains("off") || lower.contains("休假") {
+            return "Time Off"
         }
         
         switch type {
         case .work:
-            if line.localizedCaseInsensitiveContains("AC Phone") { return "AC Phone" }
-            if line.localizedCaseInsensitiveContains("Chat") { return "Chat" }
-            return "工时 (Work)"
-        case .breakFirst: return "第一小休"
-        case .lunch: return "午餐"
-        case .breakSecond: return "第二小休"
-        case .training: return "培训 (Training)"
-        case .meeting: return "团队会议"
-        case .leave: return "请假 (Time Away)"
-        case .off: return "休假 OFF"
-        case .other: return "其他安排"
+            return "Work"
+        case .breakFirst, .breakSecond:
+            return "Break"
+        case .lunch:
+            return "Lunch"
+        case .training:
+            return "Training"
+        case .meeting:
+            return "COMMTG"
+        case .leave, .off:
+            return "Time Off"
+        case .other:
+            return "Work"
         }
+    }
+    
+    // 严格判断是否为 1:1 Coaching 辅导，避免包含 11:15、1:10 等时间数字时的误判
+    private func isOneOnOneCoaching(line: String) -> Bool {
+        let lower = line.lowercased()
+        if lower.contains("coaching") || lower.contains("辅导") {
+            return true
+        }
+        if lower.contains("1 on 1") {
+            return true
+        }
+        // 使用正则确保 1:1 或 1-1 作为独立单词出现（前后为单词边界，而非 11:15）
+        let pattern = #"(?<!\d)(?:1\s*[:：\-]\s*1)(?!\d)"#
+        if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive),
+           let _ = regex.firstMatch(in: lower, range: NSRange(lower.startIndex..., in: lower)) {
+            // 如果这行文字里明确包含 break 或 lunch 或 work，即使有 1:1 也不能算作 coaching
+            if lower.contains("break") || lower.contains("lunch") || lower.contains("work") {
+                return false
+            }
+            return true
+        }
+        return false
     }
     
     private func normalizeISOorTimeString(_ raw: String) -> String {

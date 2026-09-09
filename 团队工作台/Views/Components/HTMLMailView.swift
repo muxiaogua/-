@@ -90,44 +90,6 @@ public struct HTMLMailView: NSViewRepresentable {
                 visibility: hidden !important;
                 height: 0 !important;
             }
-            
-            /* Suppress top and bottom green banner boxes, green divider lines, and base64 decorative backgrounds */
-            table[style*="58, 122, 86"], table[style*="58,122,86"],
-            table[style*="67, 145, 100"], table[style*="67,145,100"],
-            table[style*="#3A7A56"], table[style*="#3a7a56"],
-            table[style*="#439164"], table[style*="#439164"],
-            table[bgcolor*="3A7A56"], table[bgcolor*="3a7a56"],
-            table[bgcolor*="439164"], table[bgcolor*="439164"],
-            table[style*="base64"],
-            td[style*="34, 197, 94"], td[style*="34,197,94"],
-            td[style*="58, 122, 86"], td[style*="58,122,86"],
-            td[style*="67, 145, 100"], td[style*="67,145,100"],
-            td[style*="#3A7A56"], td[style*="#3a7a56"],
-            td[style*="#439164"], td[style*="#439164"],
-            td[bgcolor*="3A7A56"], td[bgcolor*="3a7a56"],
-            td[bgcolor*="439164"], td[bgcolor*="439164"],
-            td[style*="base64"],
-            div[style*="58, 122, 86"], div[style*="58,122,86"],
-            div[style*="67, 145, 100"], div[style*="67,145,100"],
-            div[style*="#3A7A56"], div[style*="#3a7a56"],
-            div[style*="#439164"], div[style*="#439164"] {
-                display: none !important;
-            }
-            
-            /* Remove green borders */
-            *[style*="border"][style*="58, 122, 86"],
-            *[style*="border"][style*="58,122,86"],
-            *[style*="border"][style*="67, 145, 100"],
-            *[style*="border"][style*="67,145,100"],
-            *[style*="border"][style*="#3a7a56"],
-            *[style*="border"][style*="#3A7A56"],
-            *[style*="border"][style*="#439164"],
-            *[style*="border"][style*="#22c55e"],
-            *[style*="border"][style*="#22C55E"] {
-                border: none !important;
-                border-top: none !important;
-                border-bottom: none !important;
-            }
         </style>
         <script>
             function adaptMailContent() {
@@ -145,15 +107,6 @@ public struct HTMLMailView: NSViewRepresentable {
                         return { r: parseInt(match[1]), g: parseInt(match[2]), b: parseInt(match[3]) };
                     }
                     return null;
-                }
-                
-                function isGreenColor(c) {
-                    const rgb = parseRGB(c);
-                    if (rgb) {
-                        if (rgb.g > 60 && rgb.g > rgb.r * 1.15 && rgb.g > rgb.b * 1.15) return true;
-                        if (rgb.g > 90 && rgb.r < 120 && rgb.b < 120) return true;
-                    }
-                    return false;
                 }
                 
                 function isRedColor(str, compColor) {
@@ -193,24 +146,6 @@ public struct HTMLMailView: NSViewRepresentable {
                     
                     const style = window.getComputedStyle(el);
                     const bg = style.backgroundColor;
-                    const bt = style.borderTopColor;
-                    const bb = style.borderBottomColor;
-                    const bl = style.borderLeftColor;
-                    const br = style.borderRightColor;
-                    
-                    // Remove green banner boxes / dividers
-                    if (isGreenColor(bg)) {
-                        if (el.offsetHeight <= 15 || el.offsetWidth > 400 || el.textContent.trim().length === 0) {
-                            el.remove();
-                            return;
-                        } else {
-                            el.style.backgroundColor = "transparent";
-                        }
-                    }
-                    if (isGreenColor(bt)) el.style.borderTop = "none";
-                    if (isGreenColor(bb)) el.style.borderBottom = "none";
-                    if (isGreenColor(bl)) el.style.borderLeft = "none";
-                    if (isGreenColor(br)) el.style.borderRight = "none";
                     
                     // Color adaptations
                     if (el.tagName !== "A" && el.tagName !== "IMG") {
@@ -234,24 +169,12 @@ public struct HTMLMailView: NSViewRepresentable {
                             if (el.getAttribute && el.getAttribute('bgcolor')) {
                                 const bgAttr = el.getAttribute('bgcolor');
                                 if (bgAttr === 'white' || bgAttr === '#ffffff' || bgAttr === '#FFF' || bgAttr === '#FFFFFF') {
-                                    el.removeAttribute('bgcolor');
+                                    el.style.backgroundColor = 'transparent';
                                 }
                             }
-                        } else {
-                            el.classList.remove('apple-mail-dark-text-adapted');
                         }
                     }
                 });
-                
-                // Strip trailing empty containers
-                while (document.body && document.body.lastElementChild) {
-                    const last = document.body.lastElementChild;
-                    if (last.offsetHeight === 0 || last.textContent.trim().length === 0 || last.tagName === "HR" || last.tagName === "BR") {
-                        last.remove();
-                    } else {
-                        break;
-                    }
-                }
             }
             
             if (document.readyState === "loading") {

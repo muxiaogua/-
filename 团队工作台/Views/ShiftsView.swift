@@ -346,7 +346,7 @@ public struct ShiftsView: View {
                     Image(systemName: "sun.max.fill")
                         .font(.system(size: 22))
                         .foregroundColor(.orange)
-                    Text("休假 OFF")
+                    Text("Time Off")
                         .font(.system(size: 13, weight: .bold))
                         .foregroundColor(.orange)
                 }
@@ -400,7 +400,7 @@ public struct ShiftsView: View {
                 HStack(spacing: 4) {
                     Image(systemName: icon)
                         .font(.system(size: 9))
-                    Text(seg.title)
+                    Text(seg.displayTitle)
                         .font(.system(size: 10.5, weight: .semibold))
                 }
                 .foregroundColor(color)

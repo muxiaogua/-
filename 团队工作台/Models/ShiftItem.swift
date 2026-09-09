@@ -56,6 +56,82 @@ public struct ShiftSegment: Identifiable, Codable, Hashable {
     public var title: String
     public var details: String
     
+    // 统一转换为纯英文官方标准排班名称
+    public var displayTitle: String {
+        let raw = title.trimmingCharacters(in: .whitespaces)
+        let lower = raw.lowercased()
+        
+        // 1. Break / 小休（优先级提升，包含 break 绝不能被 1:1 覆盖）
+        if lower.contains("break") || lower.contains("小休") || lower.contains("brk") {
+            return "Break"
+        }
+        
+        // 2. Lunch / 午餐
+        if lower.contains("lunch") || lower.contains("午餐") || lower.contains("meal") || lower.contains("dinner") {
+            return "Lunch"
+        }
+        
+        // 3. COMMTG
+        if lower.contains("commtg") {
+            return "COMMTG"
+        }
+        
+        // 4. Team Meeting / 组会
+        if lower.contains("team meeting") || lower.contains("teammtg") || lower.contains("组会") || lower.contains("团队会议") || lower.contains("例会") {
+            return "Team Meeting"
+        }
+        
+        // 5. 1:1 / Coaching (排除时间数字误判，如 11:15、1:10)
+        let pattern1on1 = #"(?<!\d)(?:1\s*[:：\-]\s*1)(?!\d)"#
+        let has1on1Token = (try? NSRegularExpression(pattern: pattern1on1, options: .caseInsensitive))?.firstMatch(in: lower, range: NSRange(lower.startIndex..., in: lower)) != nil
+        if lower.contains("coaching") || lower.contains("辅导") || lower.contains("1 on 1") || has1on1Token {
+            return "1:1 Coaching"
+        }
+        
+        // 6. SGT / 自学培训
+        if lower.contains("sgt") {
+            return "SGT"
+        }
+        
+        // 7. Time Off / 请假
+        if lower.contains("time off") || lower.contains("time away") || lower.contains("special") || lower.contains("pto") || lower.contains("vto") || lower.contains("vacation") || lower.contains("sick") || lower.contains("leave") || lower.contains("请假") || lower.contains("年假") || lower.contains("病假") || lower.contains("事假") {
+            return "Time Off"
+        }
+        if lower.contains("break") || lower.contains("小休") || lower.contains("brk") {
+            return "Break"
+        }
+        
+        // 8. Work / 上班工时
+        if lower.contains("work") || lower.contains("工时") || lower.contains("上班") {
+            return "Work"
+        }
+        
+        // 9. Training / 培训
+        if lower.contains("training") || lower.contains("培训") {
+            return "Training"
+        }
+        
+        // 10. OFF / 休假
+        if lower.contains("off") || lower.contains("休假") || lower.contains("轮休") {
+            return "Time Off"
+        }
+        
+        // 兜底按枚举类型返回标准英文
+        switch type {
+        case .work: return "Work"
+        case .breakFirst, .breakSecond: return "Break"
+        case .lunch: return "Lunch"
+        case .training: return "Training"
+        case .meeting: return "COMMTG"
+        case .leave, .off: return "Time Off"
+        case .other:
+            if !raw.isEmpty && raw != "其他安排" {
+                return raw
+            }
+            return "Work"
+        }
+    }
+    
     public init(
         id: UUID = UUID(),
         dateStr: String = "",

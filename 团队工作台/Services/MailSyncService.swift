@@ -408,6 +408,7 @@ public class MailSyncService: ObservableObject {
         // Determine whether to do incremental sync based on last sync time
         let hasGreen = store.newsArticles.contains(where: { $0.category == .greenEmail })
         let hasSlack = store.newsArticles.contains(where: { $0.category == .slackSupport })
+        
         let isIncremental = !forceFullSync && (lastSyncTime != nil) && (hasGreen || hasSlack)
         
         let cutoffDate: Date
@@ -432,7 +433,7 @@ public class MailSyncService: ObservableObject {
         let scriptSource = """
         tell application "Mail"
             set matchData to {}
-            set targetSender to "ic_gc_aha_sacs@apple.com"
+            set targetSender1 to "ic_gc_aha_sacs@apple.com"
             set targetKeyword1 to "Green Email - 近期重要内容"
             set targetKeyword2 to "NJ Slack Support"
             
@@ -443,62 +444,129 @@ public class MailSyncService: ObservableObject {
             set day of cutoffDate to \(cutoffDay)
             set time of cutoffDate to \(cutoffTimeInSeconds)
             
-            repeat with acc in accounts
+            -- 先限定在收件箱中优先极速查询
+            tell inbox
                 try
-                    repeat with mb in mailboxes of acc
-                        try
-                            set msgs to (messages of mb whose (sender contains targetSender and (subject contains targetKeyword1 or subject contains targetKeyword2)) and date received ≥ cutoffDate)
-                            repeat with msg in msgs
-                                set msgSender to sender of msg
-                                set msgSubj to subject of msg
+                    set msgs to (messages whose (sender contains targetSender1 and (subject contains targetKeyword1 or subject contains targetKeyword2)) and date received ≥ cutoffDate)
+                    repeat with msg in msgs
+                        set msgSender to sender of msg
+                        set msgSubj to subject of msg
+                        
+                        set isSacsSender to (msgSender contains targetSender1)
+                        set isSacsSubj to (msgSubj contains targetKeyword1 or msgSubj contains targetKeyword2)
+                        
+                        if isSacsSender and isSacsSubj then
+                            -- Strict exclusion for Re: / Fwd: / 回复 / 转发
+                            set isExcluded to false
+                            if msgSubj starts with "Re:" or msgSubj starts with "RE:" or msgSubj starts with "re:" or msgSubj starts with "re：" or msgSubj starts with "RE：" or msgSubj starts with "Re：" then
+                                set isExcluded to true
+                            else if msgSubj starts with "Fwd:" or msgSubj starts with "FWD:" or msgSubj starts with "fwd:" or msgSubj starts with "Fw:" or msgSubj starts with "FW:" or msgSubj starts with "fw:" or msgSubj starts with "fwd：" or msgSubj starts with "FWD：" or msgSubj starts with "fw：" or msgSubj starts with "FW：" then
+                                set isExcluded to true
+                            else if msgSubj starts with "回复:" or msgSubj starts with "回复：" or msgSubj starts with "回覆:" or msgSubj starts with "回覆：" or msgSubj starts with "转发:" or msgSubj starts with "转发：" or msgSubj starts with "轉寄:" or msgSubj starts with "轉寄：" then
+                                set isExcluded to true
+                            end if
+                            
+                            if not isExcluded then
+                                set msgD to date received of msg
+                                set y to (year of msgD as integer) as string
+                                set m to (month of msgD as integer) as string
+                                if length of m is 1 then set m to "0" & m
+                                set d to (day of msgD as integer) as string
+                                if length of d is 1 then set d to "0" & d
+                                set t to time of msgD
+                                set hrs to (t div 3600) as string
+                                if length of hrs is 1 then set hrs to "0" & hrs
+                                set mins to ((t mod 3600) div 60) as string
+                                if length of mins is 1 then set mins to "0" & mins
+                                set secs to (t mod 60) as string
+                                if length of secs is 1 then set secs to "0" & secs
+                                set msgDate to y & "-" & m & "-" & d & "T" & hrs & ":" & mins & ":" & secs
                                 
-                                set isSenderMatched to (msgSender contains targetSender)
-                                set isSubjMatched to (msgSubj contains targetKeyword1 or msgSubj contains targetKeyword2)
+                                set msgID to (id of msg as string)
+                                set msgPlain to (content of msg)
                                 
-                                if isSenderMatched and isSubjMatched then
-                                    -- Strict exclusion for Re: / Fwd: / 回复 / 转发
-                                    set isExcluded to false
-                                    if msgSubj starts with "Re:" or msgSubj starts with "RE:" or msgSubj starts with "re:" or msgSubj starts with "re：" or msgSubj starts with "RE：" or msgSubj starts with "Re：" then
-                                        set isExcluded to true
-                                    else if msgSubj starts with "Fwd:" or msgSubj starts with "FWD:" or msgSubj starts with "fwd:" or msgSubj starts with "Fw:" or msgSubj starts with "FW:" or msgSubj starts with "fw:" or msgSubj starts with "fwd：" or msgSubj starts with "FWD：" or msgSubj starts with "fw：" or msgSubj starts with "FW：" then
-                                        set isExcluded to true
-                                    else if msgSubj starts with "回复:" or msgSubj starts with "回复：" or msgSubj starts with "回覆:" or msgSubj starts with "回覆：" or msgSubj starts with "转发:" or msgSubj starts with "转发：" or msgSubj starts with "轉寄:" or msgSubj starts with "轉寄：" then
-                                        set isExcluded to true
-                                    end if
-                                    
-                                    if not isExcluded then
-                                        -- Format date to standard ISO 8601 (YYYY-MM-DDTHH:MM:SS)
-                                        set msgD to date received of msg
-                                        set y to (year of msgD as integer) as string
-                                        set m to (month of msgD as integer) as string
-                                        if length of m is 1 then set m to "0" & m
-                                        set d to (day of msgD as integer) as string
-                                        if length of d is 1 then set d to "0" & d
-                                        set t to time of msgD
-                                        set hrs to (t div 3600) as string
-                                        if length of hrs is 1 then set hrs to "0" & hrs
-                                        set mins to ((t mod 3600) div 60) as string
-                                        if length of mins is 1 then set mins to "0" & mins
-                                        set secs to (t mod 60) as string
-                                        if length of secs is 1 then set secs to "0" & secs
-                                        set msgDate to y & "-" & m & "-" & d & "T" & hrs & ":" & mins & ":" & secs
-                                        
-                                        set msgID to (id of msg as string)
-                                        set msgPlain to (content of msg)
-                                        
-                                        set rawSrc to ""
-                                        try
-                                            set rawSrc to (source of msg)
-                                        end try
-                                        
-                                        set end of matchData to {msgID, msgSubj, msgSender, msgDate, msgPlain, rawSrc}
-                                    end if
-                                end if
-                            end repeat
-                        end try
+                                set rawSrc to ""
+                                try
+                                    set rawSrc to (source of msg)
+                                end try
+                                
+                                set rawHTML to ""
+                                try
+                                    set rawHTML to (html content of msg)
+                                end try
+                                
+                                set end of matchData to {msgID, msgSubj, msgSender, msgDate, msgPlain, rawSrc, rawHTML}
+                            end if
+                        end if
                     end repeat
                 end try
-            end repeat
+            end tell
+            
+            -- 若收件箱未查到或需查找归档，再轻量遍历其他主邮箱
+            if (count of matchData) is 0 then
+                repeat with acc in accounts
+                    try
+                        repeat with mb in mailboxes of acc
+                            try
+                                set mbName to name of mb
+                                if mbName is not "Trash" and mbName is not "Junk" and mbName is not "Drafts" and mbName is not "Sent Messages" and mbName is not "已删除" and mbName is not "已发送" and mbName is not "草稿" and mbName is not "垃圾邮件" then
+                                    set msgs to (messages of mb whose (sender contains targetSender1 and (subject contains targetKeyword1 or subject contains targetKeyword2)) and date received ≥ cutoffDate)
+                                    repeat with msg in msgs
+                                        set msgSender to sender of msg
+                                        set msgSubj to subject of msg
+                                        
+                                        set isSacsSender to (msgSender contains targetSender1)
+                                        set isSacsSubj to (msgSubj contains targetKeyword1 or msgSubj contains targetKeyword2)
+                                        
+                                        if isSacsSender and isSacsSubj then
+                                            set isExcluded to false
+                                            if msgSubj starts with "Re:" or msgSubj starts with "RE:" or msgSubj starts with "re:" or msgSubj starts with "re：" or msgSubj starts with "RE：" or msgSubj starts with "Re：" then
+                                                set isExcluded to true
+                                            else if msgSubj starts with "Fwd:" or msgSubj starts with "FWD:" or msgSubj starts with "fwd:" or msgSubj starts with "Fw:" or msgSubj starts with "FW:" or msgSubj starts with "fw:" or msgSubj starts with "fwd：" or msgSubj starts with "FWD：" or msgSubj starts with "fw：" or msgSubj starts with "FW：" then
+                                                set isExcluded to true
+                                            else if msgSubj starts with "回复:" or msgSubj starts with "回复：" or msgSubj starts with "回覆:" or msgSubj starts with "回覆：" or msgSubj starts with "转发:" or msgSubj starts with "转发：" or msgSubj starts with "轉寄:" or msgSubj starts with "轉寄：" then
+                                                set isExcluded to true
+                                            end if
+                                            
+                                            if not isExcluded then
+                                                set msgD to date received of msg
+                                                set y to (year of msgD as integer) as string
+                                                set m to (month of msgD as integer) as string
+                                                if length of m is 1 then set m to "0" & m
+                                                set d to (day of msgD as integer) as string
+                                                if length of d is 1 then set d to "0" & d
+                                                set t to time of msgD
+                                                set hrs to (t div 3600) as string
+                                                if length of hrs is 1 then set hrs to "0" & hrs
+                                                set mins to ((t mod 3600) div 60) as string
+                                                if length of mins is 1 then set mins to "0" & mins
+                                                set secs to (t mod 60) as string
+                                                if length of secs is 1 then set secs to "0" & secs
+                                                set msgDate to y & "-" & m & "-" & d & "T" & hrs & ":" & mins & ":" & secs
+                                                
+                                                set msgID to (id of msg as string)
+                                                set msgPlain to (content of msg)
+                                                
+                                                set rawSrc to ""
+                                                try
+                                                    set rawSrc to (source of msg)
+                                                end try
+                                                
+                                                set rawHTML to ""
+                                                try
+                                                    set rawHTML to (html content of msg)
+                                                end try
+                                                
+                                                set end of matchData to {msgID, msgSubj, msgSender, msgDate, msgPlain, rawSrc, rawHTML}
+                                            end if
+                                        end if
+                                    end repeat
+                                end if
+                            end try
+                        end repeat
+                    end try
+                end repeat
+            end if
             
             return matchData
         end tell
@@ -568,15 +636,18 @@ public class MailSyncService: ObservableObject {
                 
                 for i in 1...count {
                     guard let itemDesc = descriptor.atIndex(i) else { continue }
-                    // Descriptor list items are 1-indexed in AppleEvents: {msgID, msgSubj, msgSender, msgDate, msgPlain, rawSrc}
+                    // Descriptor list items are 1-indexed in AppleEvents: {msgID, msgSubj, msgSender, msgDate, msgPlain, rawSrc, rawHTML}
                     let rawTitle = itemDesc.atIndex(2)?.stringValue ?? ""
                     let sender = itemDesc.atIndex(3)?.stringValue ?? ""
                     let dateString = itemDesc.atIndex(4)?.stringValue ?? ""
                     let rawPlain = itemDesc.atIndex(5)?.stringValue ?? ""
                     let rawMIMESource = itemDesc.atIndex(6)?.stringValue ?? ""
+                    let appleScriptHTML = itemDesc.atIndex(7)?.stringValue ?? ""
                     
                     // Strict validation
                     let lowerTitle = rawTitle.lowercased()
+                    
+                    // 1. 严禁排除所有回复、转发、讨论邮件
                     let excludedPrefixes = ["re:", "re：", "fwd:", "fwd：", "fw:", "fw：", "回复:", "回复：", "回覆:", "回覆：", "转发:", "转发：", "轉寄:", "轉寄："]
                     var isExcluded = false
                     for p in excludedPrefixes {
@@ -587,28 +658,50 @@ public class MailSyncService: ObservableObject {
                     }
                     if isExcluded { continue }
                     
-                    if !sender.lowercased().contains("ic_gc_aha_sacs@apple.com") {
-                        continue
+                    // 2. 严禁排除带有 (TEST) / [TEST] / (Practice) / [Practice] / 演练 / 测试 标记的内部演练邮件
+                    let testMarkers = [
+                        "(test)", "[test]", " test ", "test -", "test:", "test：", "测试",
+                        "(practice)", "[practice]", " practice ", "practice -", "practice:", "practice：", "演练", "练习"
+                    ]
+                    var isTestMail = false
+                    for tm in testMarkers {
+                        if lowerTitle.contains(tm) {
+                            isTestMail = true
+                            break
+                        }
                     }
+                    if isTestMail { continue }
                     
-                    // Determine category: Slack Support vs Green Email
-                    let isSlackSupport = rawTitle.contains("NJ Slack Support") || lowerTitle.contains("nj slack support")
-                    let isGreenEmail = rawTitle.contains("Green Email - 近期重要内容") || lowerTitle.contains("green email - 近期重要内容") || lowerTitle.contains("green email")
+                    let lowerSender = sender.lowercased()
+                    let isSacsSender = lowerSender.contains("ic_gc_aha_sacs@apple.com")
                     
-                    // Only accept emails strictly matching our two rules
+                    let isSlackSupport = isSacsSender && (rawTitle.contains("NJ Slack Support") || lowerTitle.contains("nj slack support"))
+                    let isGreenEmail = isSacsSender && (rawTitle.contains("Green Email - 近期重要内容") || lowerTitle.contains("green email - 近期重要内容") || lowerTitle.contains("green email"))
+                    
+                    // 重要邮件仅保留纯正的 Green Email 与 Slack Support，彻底排除 NPI 邮件
                     guard isSlackSupport || isGreenEmail else {
                         continue
                     }
                     
                     let category: NewsCategory = isSlackSupport ? .slackSupport : .greenEmail
                     
-                    // Extract high-fidelity HTML directly from the in-memory rawMIMESource
+                    // Extract high-fidelity HTML directly from the in-memory rawMIMESource or AppleScript html content
                     var extractedHTML: String? = nil
                     var parsedRawHTML: String? = nil
+                    
+                    // 1. 优先使用 AppleScript 原生获取的完整 htmlContent（绝无系统字符切片截断风险）
+                    if !appleScriptHTML.isEmpty {
+                        parsedRawHTML = appleScriptHTML
+                        extractedHTML = isSlackSupport ? nil : Self.cleanGreenEmailHTMLContent(appleScriptHTML)
+                    }
+                    
+                    // 2. 如果邮件包含 CID 图片，用 rawMIMESource 中的附件将 HTML 内的图片无感替换为 Base64
                     if !rawMIMESource.isEmpty {
                         if let parsed = MIMEHTMLParser.extractHTML(from: rawMIMESource) {
-                            parsedRawHTML = parsed
-                            extractedHTML = isSlackSupport ? nil : Self.cleanGreenEmailHTMLContent(parsed)
+                            if parsed.contains("<img") || parsed.contains("data:image") || extractedHTML == nil {
+                                parsedRawHTML = parsed
+                                extractedHTML = isSlackSupport ? nil : Self.cleanGreenEmailHTMLContent(parsed)
+                            }
                         }
                     }
                     

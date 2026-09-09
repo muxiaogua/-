@@ -508,7 +508,7 @@ public struct TeamShiftsView: View {
                                     .frame(width: 7, height: 7)
                                 Text("\(seg.startTime) - \(seg.endTime)")
                                     .font(.system(size: 12, weight: .medium, design: .monospaced))
-                                Text(seg.title)
+                                Text(seg.displayTitle)
                                     .font(.system(size: 12, weight: .bold))
                                     .foregroundColor(segmentColor(seg.type))
                                 Spacer()

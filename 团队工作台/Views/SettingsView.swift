@@ -95,19 +95,19 @@ public struct SettingsView: View {
         } message: {
             Text("所有重要邮件缓存与云端同步记录已成功清空。")
         }
-        .alert("确认清空工作台数据？", isPresented: $showConfirmClearAlert) {
+        .alert("确认清空本地数据？", isPresented: $showConfirmClearAlert) {
             Button("确认清空", role: .destructive) {
-                store.clearAllData()
+                store.clearAllLocalData()
                 showClearSuccessAlert = true
             }
             Button("取消", role: .cancel) { }
         } message: {
-            Text("此操作将彻底清除本地存储的全部团队公告、资讯文章及已读确认记录。\n\n该操作无法撤销，确定要清空吗？")
+            Text("此操作将清除当前电脑上本地缓存的全部公告、邮件与已读记录，不影响他人与云端共享文件。\n\n确定要清空吗？")
         }
-        .alert("数据已清空", isPresented: $showClearSuccessAlert) {
+        .alert("本地数据已清空", isPresented: $showClearSuccessAlert) {
             Button("确定", role: .cancel) { }
         } message: {
-            Text("所有本地公告与资讯内容均已清理完毕，工作台已恢复为空白就绪状态。")
+            Text("当前电脑的本地缓存内容已清理完毕，重新打开或同步即可按需拉取。")
         }
         .alert("测试通知已发送", isPresented: $showTestNotificationAlert) {
             Button("好", role: .cancel) { }
@@ -631,6 +631,22 @@ public struct SettingsView: View {
                         .toggleStyle(.checkbox)
                         .font(.system(size: 11))
                     }
+                    
+                    // 删除成员按钮（禁止删除自己和超级管理员）
+                    if name != store.currentUser.name {
+                        Button(role: .destructive) {
+                            store.removeMember(name: name)
+                        } label: {
+                            Image(systemName: "trash")
+                                .font(.system(size: 11))
+                                .foregroundColor(.red.opacity(0.85))
+                        }
+                        .buttonStyle(.plain)
+                        .padding(5)
+                        .background(Color.red.opacity(0.08))
+                        .clipShape(Circle())
+                        .help("从名单及共享文件夹中移除此成员名片")
+                    }
                 }
             }
         }
@@ -944,54 +960,67 @@ public struct SettingsView: View {
     
     @ViewBuilder
     private var dataManagementSection: some View {
-        if store.isDefaultAdmin(name: store.currentUser.name) {
-            VStack(alignment: .leading, spacing: 14) {
-                Text("数据管理 (超级管理员专属)")
-                    .font(.system(size: 15, weight: .bold))
-                
-                VStack(alignment: .leading, spacing: 12) {
+        let isSuperAdmin = store.isDefaultAdmin(name: store.currentUser.name)
+        
+        VStack(alignment: .leading, spacing: 14) {
+            Text("数据管理")
+                .font(.system(size: 15, weight: .bold))
+            
+            VStack(alignment: .leading, spacing: 12) {
+                // 1. 清空重要邮件缓存 (仅超级管理员可用)
+                if isSuperAdmin {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("清空重要邮件缓存")
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundColor(.orange)
-                            Text("清除本地与云端已保存的邮件内容，重置为全新拉取状态")
+                            HStack(spacing: 6) {
+                                Text("清空重要邮件缓存")
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundColor(.orange)
+                                Text("超管专属")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 1.5)
+                                    .background(Color.orange.opacity(0.12))
+                                    .foregroundColor(.orange)
+                                    .clipShape(Capsule())
+                            }
+                            Text("清空所有存储存在云端的邮件内容，重置为全新状态")
                                 .font(.system(size: 11))
                                 .foregroundColor(.secondary)
                         }
                         Spacer()
-                        Button("清空邮件数据", role: .destructive) {
+                        Button("清空邮件云端数据", role: .destructive) {
                             showConfirmClearNewsAlert = true
                         }
                         .controlSize(.small)
                     }
                     
                     Divider()
-                    
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("清空工作台所有数据")
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundColor(.red)
-                            Text("清除全部已发布的团队公告、资讯文章及已读确认记录")
-                                .font(.system(size: 11))
-                                .foregroundColor(.secondary)
-                        }
-                        Spacer()
-                        Button("清空全部数据", role: .destructive) {
-                            showConfirmClearAlert = true
-                        }
-                        .controlSize(.small)
-                    }
                 }
-                .padding(16)
-                .background(Color(NSColor.controlBackgroundColor))
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10)
-                        .stroke(Color.secondary.opacity(0.1), lineWidth: 1)
-                )
+                
+                // 2. 清空本地数据 (所有成员可用)
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("清空本地数据")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.red)
+                        Text("清空当前电脑上缓存的公告、邮件与已读记录，不影响他人与云端共享文件")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                    Button("清空本地数据", role: .destructive) {
+                        showConfirmClearAlert = true
+                    }
+                    .controlSize(.small)
+                }
             }
+            .padding(16)
+            .background(Color(NSColor.controlBackgroundColor))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(Color.secondary.opacity(0.1), lineWidth: 1)
+            )
         }
     }
     

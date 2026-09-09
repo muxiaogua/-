@@ -50,13 +50,13 @@ public class WorkbenchStore: ObservableObject {
     public init() {
         loadData()
         
-        // Listen for iCloud Shared Folder real-time change notifications
+        // Listen for iCloud Shared Folder real-time change notifications (with debounce)
         NotificationCenter.default.addObserver(
             forName: .sharedFolderDataDidUpdate,
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.loadDataFromSharedFolder()
+            self?.triggerDebouncedSharedFolderReload()
         }
         
         // Listen for App active event to sync latest cloud changes
@@ -66,15 +66,13 @@ public class WorkbenchStore: ObservableObject {
             queue: .main
         ) { [weak self] _ in
             if SharedFolderSyncService.shared.isConnected {
-                self?.loadDataFromSharedFolder()
+                self?.triggerDebouncedSharedFolderReload()
             }
         }
         
-        // Periodic background silent sync polling (every 8 seconds when connected)
-        Timer.scheduledTimer(withTimeInterval: 8.0, repeats: true) { [weak self] _ in
-            if SharedFolderSyncService.shared.isConnected {
-                self?.loadDataFromSharedFolder()
-            }
+        // 启动后仅在后台静默广播一次在线名片，不与监听循环产生连锁反应
+        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 3.0) { [weak self] in
+            self?.broadcastCurrentUserPresence()
         }
     }
     
@@ -723,6 +721,46 @@ public class WorkbenchStore: ObservableObject {
         if !teamMembers.contains(where: { $0.name == newName }) {
             teamMembers.append(currentUser)
         }
+        broadcastCurrentUserPresence()
+    }
+    
+    // MARK: - 删除无效/测试/出错的成员名片 (管理员/超管可用)
+    public func removeMember(name: String) {
+        guard !isDefaultAdmin(name: name) else { return }
+        
+        // 1. 本地移除
+        teamMembers.removeAll { $0.name == name }
+        permissionConfig.permissions.removeValue(forKey: name)
+        
+        // 2. 从云端共享文件夹的 roster/ 目录物理删除
+        if let baseURL = SharedFolderSyncService.shared.sharedFolderURL, SharedFolderSyncService.shared.isConnected {
+            let rosterFile = baseURL.appendingPathComponent("roster/member_\(name).json")
+            try? FileManager.default.removeItem(at: rosterFile)
+        }
+        
+        saveData()
+        self.objectWillChange.send()
+    }
+    
+    // MARK: - 主动向团队共享文件夹报到与广播名片 (确保其他成员能即时看见)
+    public func broadcastCurrentUserPresence() {
+        guard let baseURL = SharedFolderSyncService.shared.sharedFolderURL, SharedFolderSyncService.shared.isConnected else {
+            return
+        }
+        
+        let usr = self.currentUser
+        // 过滤空名或非法名
+        guard !usr.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        if Self.mockNamesBlocklist.contains(usr.name) { return }
+        
+        DispatchQueue.global(qos: .utility).async {
+            let rosterDir = baseURL.appendingPathComponent("roster", isDirectory: true)
+            try? FileManager.default.createDirectory(at: rosterDir, withIntermediateDirectories: true)
+            let memberURL = rosterDir.appendingPathComponent("member_\(usr.name).json")
+            if let data = try? JSONEncoder().encode(usr) {
+                try? data.write(to: memberURL)
+            }
+        }
     }
     
     // MARK: - Clean All Data
@@ -751,9 +789,8 @@ public class WorkbenchStore: ObservableObject {
         saveData()
     }
     
-    public func clearAllData() {
-        guard isDefaultAdmin(name: currentUser.name) else { return }
-        
+    // MARK: - 清空本地数据（所有成员可用，不影响他人与云端共享数据）
+    public func clearAllLocalData() {
         announcements.removeAll()
         newsArticles.removeAll()
         faqItems.removeAll()
@@ -769,7 +806,24 @@ public class WorkbenchStore: ObservableObject {
         UserDefaults.standard.removeObject(forKey: shiftsStorageKeyPrefix + currentUser.name)
         UserDefaults.standard.removeObject(forKey: "workbench_announcements_v1")
         UserDefaults.standard.removeObject(forKey: "workbench_news_v1")
-        saveData()
+        
+        // 仅在本地持久化层写入空数据，严禁删除云端共享文件夹的文件
+        if let encodedAnnouncements = try? JSONEncoder().encode(announcements) {
+            UserDefaults.standard.set(encodedAnnouncements, forKey: announcementsStorageKey)
+        }
+        if let encodedNews = try? JSONEncoder().encode(newsArticles) {
+            UserDefaults.standard.set(encodedNews, forKey: newsStorageKey)
+        }
+        if let encodedFaqs = try? JSONEncoder().encode(faqItems) {
+            UserDefaults.standard.set(encodedFaqs, forKey: faqStorageKey)
+        }
+        
+        self.objectWillChange.send()
+    }
+    
+    public func clearAllData() {
+        guard isDefaultAdmin(name: currentUser.name) else { return }
+        clearAllLocalData()
     }
     
     // MARK: - Persistence & Cloud Shared Folder Sync
@@ -885,93 +939,113 @@ public class WorkbenchStore: ObservableObject {
         }
     }
     
+    // 防抖与后台互斥加载，彻底杜绝主线程卡顿与死循环
+    private var isSharedFolderLoading = false
+    private var pendingSharedFolderReloadTask: DispatchWorkItem? = nil
+    
+    public func triggerDebouncedSharedFolderReload() {
+        pendingSharedFolderReloadTask?.cancel()
+        let task = DispatchWorkItem { [weak self] in
+            self?.loadDataFromSharedFolder()
+        }
+        pendingSharedFolderReloadTask = task
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2, execute: task)
+    }
+    
     public func loadDataFromSharedFolder() {
         guard let baseURL = SharedFolderSyncService.shared.sharedFolderURL, SharedFolderSyncService.shared.isConnected else {
             return
         }
         
-        let fileManager = FileManager.default
-        let decoder = JSONDecoder()
+        // 如果后台正在解码加载，直接跳过，防止并发轰炸磁盘
+        if isSharedFolderLoading { return }
+        isSharedFolderLoading = true
         
-        // 1. Read Announcements
-        let annDir = baseURL.appendingPathComponent("announcements", isDirectory: true)
-        var loadedAnnouncements: [Announcement] = []
-        if let files = try? fileManager.contentsOfDirectory(at: annDir, includingPropertiesForKeys: nil) {
-            for file in files where file.pathExtension == "json" {
-                if let data = try? Data(contentsOf: file),
-                   let ann = try? decoder.decode(Announcement.self, from: data) {
-                    loadedAnnouncements.append(ann)
-                }
-            }
-        }
+        let currentUserName = self.currentUser.name
+        let currentArticles = self.newsArticles
+        let currentMembers = self.teamMembers
         
-        // 2. Read Acknowledgments
-        let ackDir = baseURL.appendingPathComponent("acknowledgments", isDirectory: true)
-        var ackMap: [UUID: [AnnouncementAcknowledgment]] = [:]
-        if let files = try? fileManager.contentsOfDirectory(at: ackDir, includingPropertiesForKeys: nil) {
-            for file in files where file.pathExtension == "json" {
-                if let data = try? Data(contentsOf: file),
-                   let ack = try? decoder.decode(SharedAckRecord.self, from: data) {
-                    let record = AnnouncementAcknowledgment(
-                        id: ack.id,
-                        memberName: ack.memberName,
-                        department: ack.department,
-                        acknowledgedAt: ack.acknowledgedAt
-                    )
-                    ackMap[ack.announcementId, default: []].append(record)
-                }
-            }
-        }
-        
-        // Attach acknowledgments and determine isAcknowledged for current user
-        for i in 0..<loadedAnnouncements.count {
-            let annId = loadedAnnouncements[i].id
-            if let acks = ackMap[annId] {
-                // Merge without duplicates
-                var existingAcks = loadedAnnouncements[i].acknowledgments
-                for ack in acks {
-                    if !existingAcks.contains(where: { $0.memberName == ack.memberName }) {
-                        existingAcks.append(ack)
+        // 彻底将磁盘扫描与 JSON 解析移至后台工作线程执行，主线程零卡顿
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let fileManager = FileManager.default
+            let decoder = JSONDecoder()
+            
+            // 1. Read Announcements
+            let annDir = baseURL.appendingPathComponent("announcements", isDirectory: true)
+            var loadedAnnouncements: [Announcement] = []
+            if let files = try? fileManager.contentsOfDirectory(at: annDir, includingPropertiesForKeys: nil) {
+                for file in files where file.pathExtension == "json" {
+                    if let data = try? Data(contentsOf: file),
+                       let ann = try? decoder.decode(Announcement.self, from: data) {
+                        loadedAnnouncements.append(ann)
                     }
                 }
-                loadedAnnouncements[i].acknowledgments = existingAcks
             }
             
-            // Check if current user acknowledged
-            let userAck = loadedAnnouncements[i].acknowledgments.first(where: { $0.memberName == currentUser.name })
-            if let uAck = userAck {
-                loadedAnnouncements[i].isAcknowledged = true
-                loadedAnnouncements[i].acknowledgedAt = uAck.acknowledgedAt
+            // 2. Read Acknowledgments
+            let ackDir = baseURL.appendingPathComponent("acknowledgments", isDirectory: true)
+            var ackMap: [UUID: [AnnouncementAcknowledgment]] = [:]
+            if let files = try? fileManager.contentsOfDirectory(at: ackDir, includingPropertiesForKeys: nil) {
+                for file in files where file.pathExtension == "json" {
+                    if let data = try? Data(contentsOf: file),
+                       let ack = try? decoder.decode(SharedAckRecord.self, from: data) {
+                        let record = AnnouncementAcknowledgment(
+                            id: ack.id,
+                            memberName: ack.memberName,
+                            department: ack.department,
+                            acknowledgedAt: ack.acknowledgedAt
+                        )
+                        ackMap[ack.announcementId, default: []].append(record)
+                    }
+                }
             }
-        }
-        
-        if !loadedAnnouncements.isEmpty {
-            self.announcements = loadedAnnouncements.sorted { first, second in
+            
+            for i in 0..<loadedAnnouncements.count {
+                let annId = loadedAnnouncements[i].id
+                if let acks = ackMap[annId] {
+                    var existingAcks = loadedAnnouncements[i].acknowledgments
+                    for ack in acks {
+                        if !existingAcks.contains(where: { $0.memberName == ack.memberName }) {
+                            existingAcks.append(ack)
+                        }
+                    }
+                    loadedAnnouncements[i].acknowledgments = existingAcks
+                }
+                
+                let userAck = loadedAnnouncements[i].acknowledgments.first(where: { $0.memberName == currentUserName })
+                if let uAck = userAck {
+                    loadedAnnouncements[i].isAcknowledged = true
+                    loadedAnnouncements[i].acknowledgedAt = uAck.acknowledgedAt
+                }
+            }
+            
+            let sortedAnnouncements = loadedAnnouncements.sorted { first, second in
                 if first.isPinned != second.isPinned {
                     return first.isPinned && !second.isPinned
                 }
                 return first.publishDate > second.publishDate
             }
-        }
-        
-        // 3. Read Green Email & News Articles
-        let newsDir = baseURL.appendingPathComponent("news", isDirectory: true)
-        var loadedNews: [NewsArticle] = []
-        if let files = try? fileManager.contentsOfDirectory(at: newsDir, includingPropertiesForKeys: nil) {
-            for file in files where file.pathExtension == "json" {
-                if let data = try? Data(contentsOf: file),
-                   let article = try? decoder.decode(NewsArticle.self, from: data) {
-                    // Filter out stale Slack Support files that don't contain a Records table
-                    if article.category == .slackSupport && !article.content.contains("|") {
-                        try? fileManager.removeItem(at: file)
-                    } else {
-                        loadedNews.append(article)
+            
+            // 3. Read Green Email & News Articles
+            let newsDir = baseURL.appendingPathComponent("news", isDirectory: true)
+            var loadedNews: [NewsArticle] = []
+            if let files = try? fileManager.contentsOfDirectory(at: newsDir, includingPropertiesForKeys: nil) {
+                for file in files where file.pathExtension == "json" {
+                    if let data = try? Data(contentsOf: file),
+                       let article = try? decoder.decode(NewsArticle.self, from: data) {
+                        let lowerTitle = article.title.lowercased()
+                        let isTestMail = lowerTitle.contains("(test)") || lowerTitle.contains("[test]") || lowerTitle.contains(" test ") || lowerTitle.hasPrefix("test") || lowerTitle.contains("测试") || lowerTitle.contains("(practice)") || lowerTitle.contains("[practice]") || lowerTitle.contains("practice") || lowerTitle.contains("演练")
+                        
+                        if (article.category == .slackSupport && !article.content.contains("|")) || isTestMail {
+                            try? fileManager.removeItem(at: file)
+                        } else {
+                            loadedNews.append(article)
+                        }
                     }
                 }
             }
-        }
-        if !loadedNews.isEmpty {
-            var mergedNews = self.newsArticles
+            
+            var mergedNews = currentArticles
             for newArt in loadedNews {
                 if let existingIdx = mergedNews.firstIndex(where: { $0.title == newArt.title || $0.id == newArt.id }) {
                     mergedNews[existingIdx] = newArt
@@ -979,149 +1053,120 @@ public class WorkbenchStore: ObservableObject {
                     mergedNews.append(newArt)
                 }
             }
-            self.newsArticles = mergedNews.sorted { $0.publishDate > $1.publishDate }
-            self.objectWillChange.send()
-        }
-        
-        // Read News sync metadata from cloud shared folder
-        let newsMetaURL = baseURL.appendingPathComponent("news/sync_meta.json")
-        if let data = try? Data(contentsOf: newsMetaURL),
-           let meta = try? decoder.decode(SyncMetaRecord.self, from: data) {
-            MailSyncService.shared.lastSyncTime = meta.lastSyncTime
-        } else if let latestMailDate = loadedNews.map(\.publishDate).max() {
-            if MailSyncService.shared.lastSyncTime == nil || (MailSyncService.shared.lastSyncTime ?? Date.distantPast) < latestMailDate {
-                MailSyncService.shared.lastSyncTime = latestMailDate
+            let sortedNews = mergedNews.sorted { $0.publishDate > $1.publishDate }
+            
+            // 4. Read Comments
+            let commentsDir = baseURL.appendingPathComponent("comments", isDirectory: true)
+            var commentsToMerge: [SharedCommentRecord] = []
+            if let files = try? fileManager.contentsOfDirectory(at: commentsDir, includingPropertiesForKeys: nil) {
+                for file in files where file.pathExtension == "json" {
+                    if let data = try? Data(contentsOf: file),
+                       let sharedComment = try? decoder.decode(SharedCommentRecord.self, from: data) {
+                        commentsToMerge.append(sharedComment)
+                    }
+                }
             }
-        }
-        
-        // 4. Read Comments
-        let commentsDir = baseURL.appendingPathComponent("comments", isDirectory: true)
-        if let files = try? fileManager.contentsOfDirectory(at: commentsDir, includingPropertiesForKeys: nil) {
-            for file in files where file.pathExtension == "json" {
-                if let data = try? Data(contentsOf: file),
-                   let sharedComment = try? decoder.decode(SharedCommentRecord.self, from: data) {
+            
+            // 5. Read FAQs
+            let faqDir = baseURL.appendingPathComponent("faq", isDirectory: true)
+            var loadedFAQs: [FAQItem] = []
+            if let files = try? fileManager.contentsOfDirectory(at: faqDir, includingPropertiesForKeys: nil) {
+                for file in files where file.pathExtension == "json" {
+                    if let data = try? Data(contentsOf: file),
+                       let item = try? decoder.decode(FAQItem.self, from: data) {
+                        if Self.presetFAQQuestionsBlocklist.contains(item.question) {
+                            try? fileManager.removeItem(at: file)
+                        } else {
+                            loadedFAQs.append(item)
+                        }
+                    }
+                }
+            }
+            let sortedFAQs = loadedFAQs.sorted { $0.updatedAt > $1.updatedAt }
+            
+            // 6. Read Roster
+            let rosterDir = baseURL.appendingPathComponent("roster", isDirectory: true)
+            for mock in Self.mockNamesBlocklist {
+                let mockFile = rosterDir.appendingPathComponent("member_\(mock).json")
+                if fileManager.fileExists(atPath: mockFile.path) {
+                    try? fileManager.removeItem(at: mockFile)
+                }
+            }
+            
+            var loadedMembers: [TeamMember] = []
+            if let files = try? fileManager.contentsOfDirectory(at: rosterDir, includingPropertiesForKeys: nil) {
+                for file in files where file.pathExtension == "json" {
+                    if let data = try? Data(contentsOf: file),
+                       let member = try? decoder.decode(TeamMember.self, from: data) {
+                        if !Self.mockNamesBlocklist.contains(member.name) {
+                            loadedMembers.append(member)
+                        }
+                    }
+                }
+            }
+            
+            var mergedMembers = currentMembers.filter { !Self.mockNamesBlocklist.contains($0.name) }
+            for m in loadedMembers {
+                if !mergedMembers.contains(where: { $0.name == m.name }) {
+                    mergedMembers.append(m)
+                }
+            }
+            
+            // 7. Read Permissions
+            var loadedConfig: TeamPermissionConfig? = nil
+            let permURL = baseURL.appendingPathComponent("permissions/permissions.json")
+            if let data = try? Data(contentsOf: permURL),
+               let config = try? decoder.decode(TeamPermissionConfig.self, from: data) {
+                loadedConfig = config
+            }
+            
+            // 8. Read Shifts
+            let shiftsDir = baseURL.appendingPathComponent("shifts", isDirectory: true)
+            var loadedTeamShifts: [MemberShiftSchedule] = []
+            if let files = try? fileManager.contentsOfDirectory(at: shiftsDir, includingPropertiesForKeys: nil) {
+                for file in files where file.pathExtension == "json" {
+                    if let data = try? Data(contentsOf: file),
+                       let schedule = try? decoder.decode(MemberShiftSchedule.self, from: data) {
+                        if schedule.isSharedToTeam {
+                            loadedTeamShifts.append(schedule)
+                        }
+                    }
+                }
+            }
+            let sortedTeamShifts = loadedTeamShifts.sorted { $0.memberName < $1.memberName }
+            
+            // 回到主线程单次原子性刷新 UI，彻底消灭界面阻塞
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                
+                if !sortedAnnouncements.isEmpty {
+                    self.announcements = sortedAnnouncements
+                }
+                if !sortedNews.isEmpty {
+                    self.newsArticles = sortedNews
+                }
+                for sharedComment in commentsToMerge {
                     if let idx = self.newsArticles.firstIndex(where: { $0.id == sharedComment.articleId }) {
                         if !self.newsArticles[idx].comments.contains(where: { $0.id == sharedComment.comment.id }) {
                             self.newsArticles[idx].comments.append(sharedComment.comment)
                         }
                     }
                 }
-            }
-        }
-        
-        // 5. Read FAQs
-        let faqDir = baseURL.appendingPathComponent("faq", isDirectory: true)
-        var loadedFAQs: [FAQItem] = []
-        if let files = try? fileManager.contentsOfDirectory(at: faqDir, includingPropertiesForKeys: nil) {
-            for file in files where file.pathExtension == "json" {
-                if let data = try? Data(contentsOf: file),
-                   let item = try? decoder.decode(FAQItem.self, from: data) {
-                    if Self.presetFAQQuestionsBlocklist.contains(item.question) {
-                        try? fileManager.removeItem(at: file)
-                    } else {
-                        loadedFAQs.append(item)
-                    }
+                if !sortedFAQs.isEmpty {
+                    self.faqItems = sortedFAQs
                 }
-            }
-        }
-        if !loadedFAQs.isEmpty {
-            self.faqItems = loadedFAQs.sorted { $0.updatedAt > $1.updatedAt }
-        } else {
-            self.faqItems.removeAll { Self.presetFAQQuestionsBlocklist.contains($0.question) }
-        }
-        
-        // Read FAQ sync metadata from cloud shared folder
-        let faqMetaURL = baseURL.appendingPathComponent("faq/sync_meta.json")
-        if let data = try? Data(contentsOf: faqMetaURL),
-           let meta = try? decoder.decode(SyncMetaRecord.self, from: data) {
-            ChorusFAQSyncService.shared.lastSyncTime = meta.lastSyncTime
-        } else if let latestFAQDate = loadedFAQs.map(\.updatedAt).max() {
-            if ChorusFAQSyncService.shared.lastSyncTime == nil || (ChorusFAQSyncService.shared.lastSyncTime ?? Date.distantPast) < latestFAQDate {
-                ChorusFAQSyncService.shared.lastSyncTime = latestFAQDate
-            }
-        }
-        
-        // 6. Read Roster (All discovered active team members)
-        let rosterDir = baseURL.appendingPathComponent("roster", isDirectory: true)
-        
-        // Purge any legacy mock member files from cloud directory
-        for mock in Self.mockNamesBlocklist {
-            let mockFile = rosterDir.appendingPathComponent("member_\(mock).json")
-            if fileManager.fileExists(atPath: mockFile.path) {
-                try? fileManager.removeItem(at: mockFile)
-            }
-        }
-        
-        var loadedMembers: [TeamMember] = []
-        if let files = try? fileManager.contentsOfDirectory(at: rosterDir, includingPropertiesForKeys: nil) {
-            for file in files where file.pathExtension == "json" {
-                if let data = try? Data(contentsOf: file),
-                   let member = try? decoder.decode(TeamMember.self, from: data) {
-                    if !Self.mockNamesBlocklist.contains(member.name) {
-                        loadedMembers.append(member)
-                    }
+                self.teamMembers = mergedMembers
+                if !self.teamMembers.contains(where: { $0.name == self.currentUser.name }) && !Self.mockNamesBlocklist.contains(self.currentUser.name) {
+                    self.teamMembers.append(self.currentUser)
                 }
-            }
-        }
-        if !loadedMembers.isEmpty {
-            var merged = self.teamMembers.filter { !Self.mockNamesBlocklist.contains($0.name) }
-            for m in loadedMembers {
-                if !merged.contains(where: { $0.name == m.name }) {
-                    merged.append(m)
+                if let config = loadedConfig {
+                    self.permissionConfig = config
                 }
+                self.teamShiftSchedules = sortedTeamShifts
+                
+                self.isSharedFolderLoading = false
+                self.objectWillChange.send()
             }
-            self.teamMembers = merged
-        }
-        if !self.teamMembers.contains(where: { $0.name == currentUser.name }) && !Self.mockNamesBlocklist.contains(currentUser.name) {
-            self.teamMembers.append(currentUser)
-        }
-        
-        // Clean any mock acks and migrate legacy author if needed
-        if currentUser.name != "亮亮" {
-            migrateAuthor(from: "亮亮", to: currentUser.name)
-        }
-        
-        for i in 0..<self.announcements.count {
-            self.announcements[i].acknowledgments.removeAll { Self.mockNamesBlocklist.contains($0.memberName) }
-        }
-        
-        // 7. Read Permissions
-        let permURL = baseURL.appendingPathComponent("permissions/permissions.json")
-        if let data = try? Data(contentsOf: permURL),
-           let config = try? decoder.decode(TeamPermissionConfig.self, from: data) {
-            self.permissionConfig = config
-            if let encoded = try? JSONEncoder().encode(config) {
-                UserDefaults.standard.set(encoded, forKey: permissionsStorageKey)
-            }
-        }
-        
-        // 8. Read Team Shared Shift Schedules
-        let shiftsDir = baseURL.appendingPathComponent("shifts", isDirectory: true)
-        var loadedTeamShifts: [MemberShiftSchedule] = []
-        if let files = try? fileManager.contentsOfDirectory(at: shiftsDir, includingPropertiesForKeys: nil) {
-            for file in files where file.pathExtension == "json" {
-                if let data = try? Data(contentsOf: file),
-                   let schedule = try? decoder.decode(MemberShiftSchedule.self, from: data) {
-                    if schedule.isSharedToTeam {
-                        loadedTeamShifts.append(schedule)
-                    }
-                }
-            }
-        }
-        self.teamShiftSchedules = loadedTeamShifts.sorted { $0.memberName < $1.memberName }
-        
-        // Update local cache
-        if let encodedAnnouncements = try? JSONEncoder().encode(announcements) {
-            UserDefaults.standard.set(encodedAnnouncements, forKey: announcementsStorageKey)
-        }
-        if let encodedNews = try? JSONEncoder().encode(newsArticles) {
-            UserDefaults.standard.set(encodedNews, forKey: newsStorageKey)
-        }
-        if let encodedFAQ = try? JSONEncoder().encode(faqItems) {
-            UserDefaults.standard.set(encodedFAQ, forKey: faqStorageKey)
-        }
-        if let encodedMembers = try? JSONEncoder().encode(teamMembers) {
-            UserDefaults.standard.set(encodedMembers, forKey: teamMembersStorageKey)
         }
     }
     
@@ -1149,9 +1194,17 @@ public class WorkbenchStore: ObservableObject {
         
         let userData = UserDefaults.standard.data(forKey: currentUserStorageKey) ?? UserDefaults.standard.data(forKey: "workbench_current_user_v1")
         if let data = userData, let decodedUser = try? JSONDecoder().decode(TeamMember.self, from: data) {
-            self.currentUser = decodedUser
+            let lower = decodedUser.name.lowercased()
+            let isInvalidLegacy = lower == "testuser" || lower == "user" || lower == "admin" || lower == "apple" || lower == "mac"
+            // 如果缓存里残留的是旧测试名或无效名，自动升级为多级探测的系统真实名字
+            if isInvalidLegacy {
+                self.currentUser = TeamMember.defaultSystemUser
+                UserDefaults.standard.removeObject(forKey: currentUserStorageKey)
+            } else {
+                self.currentUser = decodedUser
+            }
         } else {
-            self.currentUser = TeamMember.currentUser
+            self.currentUser = TeamMember.defaultSystemUser
         }
         self.loadShiftSchedule(for: self.currentUser.name)
         
@@ -1187,6 +1240,10 @@ public class WorkbenchStore: ObservableObject {
             let oneYearAgo = Calendar.current.date(byAdding: .year, value: -1, to: Date()) ?? Date().addingTimeInterval(-365 * 86400)
             self.newsArticles = decoded
                 .filter { article in
+                    let lower = article.title.lowercased()
+                    if lower.contains("(test)") || lower.contains("[test]") || lower.contains(" test ") || lower.hasPrefix("test") || lower.contains("测试") || lower.contains("(practice)") || lower.contains("[practice]") || lower.contains("practice") || lower.contains("演练") {
+                        return false
+                    }
                     // Only keep Green Email articles within 1 rolling year
                     if article.category == .greenEmail {
                         return article.publishDate >= oneYearAgo

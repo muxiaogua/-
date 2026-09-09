@@ -153,7 +153,7 @@ public struct NPIQueryView: View {
                     Text("NPI 检索")
                         .font(.system(size: 20, weight: .bold))
                     
-                    Text("Green Email 议题追踪台")
+                    Text("NPI 重点议题追踪")
                         .font(.system(size: 11.5, weight: .semibold))
                         .foregroundColor(.teal)
                         .padding(.horizontal, 8)
@@ -162,7 +162,7 @@ public struct NPIQueryView: View {
                         .clipShape(Capsule())
                 }
                 
-                Text("已知问题快速检索、应对措施查询、RTA 状态追踪及历史更替记录")
+                Text("源自 fy26_gc_npicomms@apple.com 及 [FY26 GC NPI] 重点推送的已知问题与 RTA 追踪")
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
             }
@@ -711,86 +711,123 @@ public struct NPIQueryView: View {
     
     private func triggerSyncFromMail() {
         Task {
-            _ = await mailSyncService.syncGreenEmailsFromMail(into: store, forceFullSync: false)
-            syncIssuesFromGreenEmails()
+            syncNPIIssuesDirectlyFromMail()
         }
     }
     
-    private func syncIssuesFromGreenEmails() {
-        let df = DateFormatter()
-        df.dateFormat = "yyyy-MM-dd"
-        var totalExtracted = 0
-        
-        for article in store.newsArticles where article.category == .greenEmail {
-            let dateVal = df.string(from: article.publishDate)
-            let lines = article.content.components(separatedBy: .newlines)
-            var currentStatus = "需提交RTA"
+    // 直接独立通过 AppleScript 从 Mail.app 查询并提取来自 fy26_gc_npicomms@apple.com 的 [FY26 GC NPI] 邮件议题
+    private func syncNPIIssuesDirectlyFromMail() {
+        let script = """
+        tell application "Mail"
+            set npiRecords to {}
+            set targetSender to "fy26_gc_npicomms@apple.com"
+            set targetSubject to "[FY26 GC NPI]"
             
-            for (idx, line) in lines.enumerated() {
-                let l = line.trimmingCharacters(in: .whitespaces)
-                if l.contains("需提交 RTA") || l.contains("提交 RTA") { currentStatus = "需提交RTA" }
-                else if l.contains("无需提交 RTA") || l.contains("无需 RTA") || l.contains("不需要 RTA") { currentStatus = "无需RTA" }
-                else if l.contains("积极投票") { currentStatus = "积极投票" }
+            tell inbox
+                try
+                    set msgs to (messages whose (sender contains targetSender and subject contains targetSubject))
+                    repeat with msg in msgs
+                        set msgSubj to subject of msg
+                        set msgDate to date received of msg
+                        set y to (year of msgDate as integer) as string
+                        set m to (month of msgDate as integer) as string
+                        if length of m is 1 then set m to "0" & m
+                        set d to (day of msgDate as integer) as string
+                        if length of d is 1 then set d to "0" & d
+                        set formattedDate to y & "-" & m & "-" & d
+                        set msgPlain to (content of msg)
+                        set end of npiRecords to {msgSubj, formattedDate, msgPlain}
+                    end repeat
+                end try
+            end tell
+            return npiRecords
+        end tell
+        """
+        
+        DispatchQueue.global(qos: .userInitiated).async {
+            var errorDict: NSDictionary?
+            let appleScript = NSAppleScript(source: script)
+            let descriptor = appleScript?.executeAndReturnError(&errorDict)
+            
+            guard let descriptor = descriptor, descriptor.numberOfItems > 0 else {
+                return
+            }
+            
+            var extractedList: [NpiIssueItem] = []
+            
+            for i in 1...descriptor.numberOfItems {
+                guard let itemDesc = descriptor.atIndex(i) else { continue }
+                let subj = itemDesc.atIndex(1)?.stringValue ?? ""
+                let dateVal = itemDesc.atIndex(2)?.stringValue ?? ""
+                let body = itemDesc.atIndex(3)?.stringValue ?? ""
                 
-                guard let regex = try? NSRegularExpression(pattern: #"(\d{5,6})\s*[-–—:]\s*([^\n\r]+)"#, options: .caseInsensitive),
-                      let match = regex.firstMatch(in: l, range: NSRange(l.startIndex..., in: l)) else {
-                    continue
-                }
+                let lines = body.components(separatedBy: .newlines)
+                var currentStatus = "需提交RTA"
                 
-                let numId = String(l[Range(match.range(at: 1), in: l)!])
-                let title = String(l[Range(match.range(at: 2), in: l)!]).trimmingCharacters(in: .whitespaces)
-                let prefix = (numId.count == 5 || numId.hasPrefix("10") || numId.hasPrefix("11") || numId.hasPrefix("12")) ? "KB " : "IT "
-                let fullId = prefix + numId
-                
-                var desc = title
-                for j in (idx + 1)..<min(idx + 4, lines.count) {
-                    let nextL = lines[j].trimmingCharacters(in: .whitespaces)
-                    if !nextL.isEmpty && !nextL.contains("Issue Tracker") && !nextL.contains("以下") {
-                        desc = nextL
-                        break
+                for (idx, line) in lines.enumerated() {
+                    let l = line.trimmingCharacters(in: .whitespaces)
+                    if l.contains("需提交 RTA") || l.contains("提交 RTA") { currentStatus = "需提交RTA" }
+                    else if l.contains("无需提交 RTA") || l.contains("无需 RTA") || l.contains("不需要 RTA") { currentStatus = "无需RTA" }
+                    else if l.contains("积极投票") { currentStatus = "积极投票" }
+                    
+                    guard let regex = try? NSRegularExpression(pattern: #"(\d{5,6})\s*[-–—:]\s*([^\n\r]+)"#, options: .caseInsensitive),
+                          let match = regex.firstMatch(in: l, range: NSRange(l.startIndex..., in: l)) else {
+                        continue
                     }
-                }
-                
-                var pt = "iOS 26"
-                let checkStr = (title + " " + desc).lowercased()
-                if checkStr.contains("账户") || checkStr.contains("apple id") || checkStr.contains("登录") { pt = "Apple 账户" }
-                else if checkStr.contains("airpods") || checkStr.contains("耳机") { pt = "AirPods" }
-                else if checkStr.contains("watch") || checkStr.contains("表盘") { pt = "Apple Watch" }
-                else if checkStr.contains("mac") || checkStr.contains("tahoe") || checkStr.contains("访达") { pt = "Mac / macOS" }
-                else if checkStr.contains("ipad") { pt = "iPadOS 26" }
-                else if checkStr.contains("iphone") || checkStr.contains("相机控制") || checkStr.contains("oled") { pt = "iPhone" }
-                else if checkStr.contains("rcc") || checkStr.contains("旗舰店") { pt = "零售与运营" }
-                
-                var isExist = false
-                for existingItem in npiItems {
-                    if existingItem.id == fullId && existingItem.date == dateVal {
-                        isExist = true
-                        break
+                    
+                    let numId = String(l[Range(match.range(at: 1), in: l)!])
+                    let title = String(l[Range(match.range(at: 2), in: l)!]).trimmingCharacters(in: .whitespaces)
+                    let prefix = (numId.count == 5 || numId.hasPrefix("10") || numId.hasPrefix("11") || numId.hasPrefix("12")) ? "KB " : "IT "
+                    let fullId = prefix + numId
+                    
+                    var desc = title
+                    for j in (idx + 1)..<min(idx + 4, lines.count) {
+                        let nextL = lines[j].trimmingCharacters(in: .whitespaces)
+                        if !nextL.isEmpty && !nextL.contains("Issue Tracker") && !nextL.contains("以下") {
+                            desc = nextL
+                            break
+                        }
                     }
-                }
-                if !isExist {
-                    let itemGuidance: String = "参考邮件应对方案；" + (currentStatus == "需提交RTA" ? "必要时提交 RTA" : "目前无需提交 RTA")
+                    
+                    var pt = "iOS 26"
+                    let checkStr = (title + " " + desc).lowercased()
+                    if checkStr.contains("账户") || checkStr.contains("apple id") || checkStr.contains("登录") { pt = "Apple 账户" }
+                    else if checkStr.contains("airpods") || checkStr.contains("耳机") { pt = "AirPods" }
+                    else if checkStr.contains("watch") || checkStr.contains("表盘") { pt = "Apple Watch" }
+                    else if checkStr.contains("mac") || checkStr.contains("tahoe") || checkStr.contains("访达") { pt = "Mac / macOS" }
+                    else if checkStr.contains("ipad") { pt = "iPadOS 26" }
+                    else if checkStr.contains("iphone") || checkStr.contains("相机控制") || checkStr.contains("oled") { pt = "iPhone" }
+                    else if checkStr.contains("rcc") || checkStr.contains("旗舰店") { pt = "零售与运营" }
+                    
                     let item = NpiIssueItem(
                         id: fullId,
                         date: dateVal,
                         productType: pt,
                         title: title,
                         desc: desc,
-                        guidance: itemGuidance,
+                        guidance: "参考官方 NPI 邮件应对方案；" + (currentStatus == "需提交RTA" ? "必要时提交 RTA" : "目前无需提交 RTA"),
                         status: currentStatus,
-                        emailSubject: article.title
+                        emailSubject: subj
                     )
-                    npiItems.insert(item, at: 0)
-                    totalExtracted += 1
+                    extractedList.append(item)
                 }
             }
-        }
-        
-        if totalExtracted > 0 {
-            saveNpiData()
-            importedFeedbackToast = "🎉 已从最新邮件中自动提取 \(totalExtracted) 个 NPI 议题！"
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                importedFeedbackToast = nil
+            
+            DispatchQueue.main.async {
+                var totalAdded = 0
+                for item in extractedList {
+                    if !self.npiItems.contains(where: { $0.id == item.id && $0.date == item.date }) {
+                        self.npiItems.insert(item, at: 0)
+                        totalAdded += 1
+                    }
+                }
+                if totalAdded > 0 {
+                    self.saveNpiData()
+                    self.importedFeedbackToast = "🎉 成功从官方 NPI 邮件中同步 \(totalAdded) 个议题！"
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                        self.importedFeedbackToast = nil
+                    }
+                }
             }
         }
     }
