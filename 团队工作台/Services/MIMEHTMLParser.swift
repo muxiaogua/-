@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import AppKit
 
 public struct MIMEHTMLParser {
     /// Extracts and decodes the HTML body from a raw RFC822 / MIME email source string.
@@ -12,7 +13,7 @@ public struct MIMEHTMLParser {
         let normalized = rawSource.replacingOccurrences(of: "\r\n", with: "\n").replacingOccurrences(of: "\r", with: "\n")
         
         // 1. 扫描邮件源文件中所有的图片附件（抽取 Content-ID 与 Base64 数据）
-        let cidImageMap = extractCIDImageMap(from: normalized)
+        let cidInfo = extractCIDImageMap(from: normalized)
         
         // 2. Find all boundary strings defined anywhere in the message headers or sub-headers
         var boundaries: [String] = []
@@ -114,16 +115,17 @@ public struct MIMEHTMLParser {
         guard let finalHTML = extractedHTML else { return nil }
         
         // 5. 将提取出的 HTML 中的 CID 图片地址无感替换为 Base64 内联图片
-        return inlineCIDImages(in: finalHTML, using: cidImageMap)
+        return inlineCIDImages(in: finalHTML, using: cidInfo)
     }
     
     // MARK: - CID 附件图像提取器 (自动扫描邮件各多分卷中的图片并生成 Base64 Data URL)
-    private static func extractCIDImageMap(from normalized: String) -> [String: String] {
+    private static func extractCIDImageMap(from normalized: String) -> (map: [String: String], ordered: [String]) {
         var cidMap: [String: String] = [:]
+        var orderedImages: [String] = []
         
         // 寻找每个包含 image/ 的分卷
         let partSplitter = #"(?i)\n--[^\n]+\n"#
-        guard let regex = try? NSRegularExpression(pattern: partSplitter) else { return cidMap }
+        guard let regex = try? NSRegularExpression(pattern: partSplitter) else { return (cidMap, orderedImages) }
         
         let matches = regex.matches(in: normalized, options: [], range: NSRange(location: 0, length: normalized.utf16.count))
         var chunkRanges: [Range<String.Index>] = []
@@ -182,7 +184,20 @@ public struct MIMEHTMLParser {
             let cleanB64 = rawBody.components(separatedBy: .whitespacesAndNewlines).joined()
             guard !cleanB64.isEmpty, cleanB64.count > 100 else { continue }
             
-            let dataUrl = "data:\(mimeType);base64,\(cleanB64)"
+            var finalMime = mimeType
+            var finalB64 = cleanB64
+            // 如果是 tiff 格式，转成通用的 png
+            if mimeType.contains("tiff") {
+                if let rawData = Data(base64Encoded: cleanB64),
+                   let rep = NSBitmapImageRep(data: rawData),
+                   let pngData = rep.representation(using: .png, properties: [:]) {
+                    finalMime = "image/png"
+                    finalB64 = pngData.base64EncodedString()
+                }
+            }
+            
+            let dataUrl = "data:\(finalMime);base64,\(finalB64)"
+            orderedImages.append(dataUrl)
             
             if let cid = contentID {
                 cidMap[cid.lowercased()] = dataUrl
@@ -195,12 +210,14 @@ public struct MIMEHTMLParser {
             }
         }
         
-        return cidMap
+        return (cidMap, orderedImages)
     }
     
     // MARK: - 将 HTML 中的 CID 引用安全替换为 Data URL
-    private static func inlineCIDImages(in html: String, using cidMap: [String: String]) -> String {
-        guard !cidMap.isEmpty else { return html }
+    private static func inlineCIDImages(in html: String, using cidInfo: (map: [String: String], ordered: [String])) -> String {
+        let cidMap = cidInfo.map
+        let orderedImages = cidInfo.ordered
+        guard !cidMap.isEmpty || !orderedImages.isEmpty else { return html }
         var result = html
         
         // 匹配各类 <img ... src="cid:..." 或 id="<...>" 或 alt="..." 属性>
@@ -208,8 +225,12 @@ public struct MIMEHTMLParser {
         guard let imgRegex = try? NSRegularExpression(pattern: imgPattern) else { return html }
         
         let matches = imgRegex.matches(in: html, range: NSRange(html.startIndex..., in: html))
-        // 从后往前替换，保持字符索引有效
-        for match in matches.reversed() {
+        
+        // 顺序匹配：找出所有需要替换的匹配项与对应的 dataUrl
+        var replacements: [(range: Range<String.Index>, dataUrl: String, oldTag: String)] = []
+        var fallbackIdx = 0
+        
+        for match in matches {
             guard let r = Range(match.range, in: result) else { continue }
             let imgTag = String(result[r])
             
@@ -243,16 +264,28 @@ public struct MIMEHTMLParser {
                 }
             }
             
-            // 如果找到了匹配的图片 Base64，替换此 <img> 的 src
-            if let dataUrl = matchedDataUrl {
-                var newImgTag = imgTag
-                if let replaceSrcRegex = try? NSRegularExpression(pattern: #"(?i)src=["'][^"']*["']"#) {
-                    newImgTag = replaceSrcRegex.stringByReplacingMatches(in: newImgTag, range: NSRange(newImgTag.startIndex..., in: newImgTag), withTemplate: "src=\"\(dataUrl)\"")
-                } else {
-                    newImgTag = newImgTag.replacingOccurrences(of: "<img", with: "<img src=\"\(dataUrl)\"")
+            // 4. 序号保底匹配：如果包含 cid: 但未能命中特定 key，则按出现顺序兜底映射附件图片
+            if matchedDataUrl == nil && imgTag.localizedCaseInsensitiveContains("cid:") {
+                if fallbackIdx < orderedImages.count {
+                    matchedDataUrl = orderedImages[fallbackIdx]
+                    fallbackIdx += 1
                 }
-                result.replaceSubrange(r, with: newImgTag)
             }
+            
+            if let dataUrl = matchedDataUrl {
+                replacements.append((range: r, dataUrl: dataUrl, oldTag: imgTag))
+            }
+        }
+        
+        // 从后往前替换，保持字符索引有效
+        for rep in replacements.reversed() {
+            var newImgTag = rep.oldTag
+            if let replaceSrcRegex = try? NSRegularExpression(pattern: #"(?i)src=["'][^"']*["']"#) {
+                newImgTag = replaceSrcRegex.stringByReplacingMatches(in: newImgTag, range: NSRange(newImgTag.startIndex..., in: newImgTag), withTemplate: "src=\"\(rep.dataUrl)\"")
+            } else {
+                newImgTag = newImgTag.replacingOccurrences(of: "<img", with: "<img src=\"\(rep.dataUrl)\"")
+            }
+            result.replaceSubrange(rep.range, with: newImgTag)
         }
         
         return result

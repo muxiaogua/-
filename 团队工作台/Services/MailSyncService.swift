@@ -97,18 +97,7 @@ public class MailSyncService: ObservableObject {
             "Green Email — 近期重要内容 — ",
             "Green Email - 近期重要内容",
             "Green Email – 近期重要内容",
-            "Green Email — 近期重要内容",
-            " Green Email - ",
-            " Green Email – ",
-            " Green Email — ",
-            " Green Email: ",
-            " Green Email：",
-            " Green Email",
-            "Green Email - ",
-            "Green Email – ",
-            "Green Email — ",
-            "Green Email: ",
-            "Green Email："
+            "Green Email — 近期重要内容"
         ]
         
         for prefix in prefixesToStrip {
@@ -147,16 +136,21 @@ public class MailSyncService: ObservableObject {
         
         for marker in traditionalMarkers {
             if let range = html.range(of: marker) {
-                let beforeMarker = String(html[..<range.lowerBound])
-                if let hrRange = beforeMarker.range(of: "<hr", options: .backwards),
-                   beforeMarker.distance(from: hrRange.lowerBound, to: beforeMarker.endIndex) < 300 {
-                    html = String(beforeMarker[..<hrRange.lowerBound])
-                } else if let tableRange = beforeMarker.range(of: "<table", options: .backwards),
-                          beforeMarker.distance(from: tableRange.lowerBound, to: beforeMarker.endIndex) < 400 {
-                    html = String(beforeMarker[..<tableRange.lowerBound])
-                } else {
-                    html = beforeMarker
+                var beforeMarker = String(html[..<range.lowerBound])
+                if let tableStart = beforeMarker.range(of: "<table", options: .backwards) {
+                    let precedingSlice = String(beforeMarker[..<tableStart.lowerBound])
+                    if let bannerTableStart = precedingSlice.range(of: "<table", options: .backwards) {
+                        let potentialBanner = String(precedingSlice[bannerTableStart.lowerBound...])
+                        if potentialBanner.contains("background-image") || potentialBanner.contains("───") {
+                            beforeMarker = String(precedingSlice[..<bannerTableStart.lowerBound])
+                        } else {
+                            beforeMarker = String(beforeMarker[..<tableStart.lowerBound])
+                        }
+                    } else {
+                        beforeMarker = String(beforeMarker[..<tableStart.lowerBound])
+                    }
                 }
+                html = beforeMarker
                 break
             }
         }
@@ -184,6 +178,12 @@ public class MailSyncService: ObservableObject {
         // Strip any remaining top or bottom green banner tables with background-image or background-color rgb(58, 122, 86) or #3a7a56
         if let greenTableRegex = try? NSRegularExpression(pattern: #"(?i)<table[^>]*(?:background-color:\s*(?:rgb\(58,\s*122,\s*86\)|#3a7a56|#3A7A56)|bgcolor=["']?(?:#3a7a56|#3A7A56|rgb\(58,\s*122,\s*86\))["']?)[^>]*>[\s\S]*?</table>"#) {
             html = greenTableRegex.stringByReplacingMatches(in: html, options: [], range: NSRange(location: 0, length: html.utf16.count), withTemplate: "")
+        }
+        
+        // Strip any decorative banner tables containing background-image and dashed lines
+        let bannerPattern = #"(?i)<table\b[^>]*width=["']?900["']?[^>]*>[\s\S]*?───[\s\S]*?</table>"#
+        if let regex = try? NSRegularExpression(pattern: bannerPattern) {
+            html = regex.stringByReplacingMatches(in: html, options: [], range: NSRange(location: 0, length: html.utf16.count), withTemplate: "")
         }
         
         // Strip any remaining <hr> divider lines
@@ -453,7 +453,9 @@ public class MailSyncService: ObservableObject {
                         set msgSubj to subject of msg
                         
                         set isSacsSender to (msgSender contains targetSender1)
-                        set isSacsSubj to (msgSubj contains targetKeyword1 or msgSubj contains targetKeyword2)
+                        set isGreenSubj to (msgSubj contains "Green Email" and msgSubj contains "近期重要内容")
+                        set isSlackSubj to (msgSubj contains "NJ Slack Support")
+                        set isSacsSubj to (isGreenSubj or isSlackSubj)
                         
                         if isSacsSender and isSacsSubj then
                             -- Strict exclusion for Re: / Fwd: / 回复 / 转发
@@ -516,7 +518,9 @@ public class MailSyncService: ObservableObject {
                                         set msgSubj to subject of msg
                                         
                                         set isSacsSender to (msgSender contains targetSender1)
-                                        set isSacsSubj to (msgSubj contains targetKeyword1 or msgSubj contains targetKeyword2)
+                                        set isGreenSubj to (msgSubj contains "Green Email" and msgSubj contains "近期重要内容")
+                                        set isSlackSubj to (msgSubj contains "NJ Slack Support")
+                                        set isSacsSubj to (isGreenSubj or isSlackSubj)
                                         
                                         if isSacsSender and isSacsSubj then
                                             set isExcluded to false
@@ -676,7 +680,7 @@ public class MailSyncService: ObservableObject {
                     let isSacsSender = lowerSender.contains("ic_gc_aha_sacs@apple.com")
                     
                     let isSlackSupport = isSacsSender && (rawTitle.contains("NJ Slack Support") || lowerTitle.contains("nj slack support"))
-                    let isGreenEmail = isSacsSender && (rawTitle.contains("Green Email - 近期重要内容") || lowerTitle.contains("green email - 近期重要内容") || lowerTitle.contains("green email"))
+                    let isGreenEmail = isSacsSender && (lowerTitle.contains("green email") && lowerTitle.contains("近期重要内容"))
                     
                     // 重要邮件仅保留纯正的 Green Email 与 Slack Support，彻底排除 NPI 邮件
                     guard isSlackSupport || isGreenEmail else {

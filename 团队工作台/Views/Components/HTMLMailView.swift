@@ -98,6 +98,14 @@ public struct HTMLMailView: NSViewRepresentable {
                 // 1. Remove all HR tags
                 document.querySelectorAll("hr").forEach(el => el.remove());
                 
+                // 2. Remove decorative dash dividers if any
+                document.querySelectorAll("span, div").forEach(el => {
+                    if (el.textContent && el.textContent.includes("─── ─── ───")) {
+                        const tr = el.closest("tr") || el;
+                        tr.remove();
+                    }
+                });
+                
                 const allElements = document.querySelectorAll("*");
                 
                 function parseRGB(c) {

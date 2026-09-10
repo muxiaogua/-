@@ -19,6 +19,13 @@ struct TeamWorkbenchApp: App {
         .windowToolbarStyle(.unifiedCompact)
         .commands {
             SidebarCommands()
+            CommandGroup(after: .appInfo) {
+                Button("检查新版本...") {
+                    AppUpdateService.shared.checkForUpdates(isUserInitiated: true)
+                    AppUpdateService.shared.showUpdateSheet = true
+                }
+                .keyboardShortcut("U", modifiers: [.command, .shift])
+            }
         }
     }
 }

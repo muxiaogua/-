@@ -6,7 +6,7 @@
 import Foundation
 
 public enum NewsCategory: String, Codable, CaseIterable, Identifiable {
-    case all = "全部"
+    case unread = "未读"
     case greenEmail = "Green Email"
     case slackSupport = "Slack Support"
     
@@ -14,9 +14,23 @@ public enum NewsCategory: String, Codable, CaseIterable, Identifiable {
     
     public var iconName: String {
         switch self {
-        case .all: return "tray.full.fill"
+        case .unread: return "envelope.badge.fill"
         case .greenEmail: return "envelope.fill"
         case .slackSupport: return "bubble.left.and.bubble.right.fill"
+        }
+    }
+    
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let raw = try container.decode(String.self)
+        if raw == "全部" || raw == "未读" {
+            self = .unread
+        } else if raw == "Green Email" {
+            self = .greenEmail
+        } else if raw == "Slack Support" {
+            self = .slackSupport
+        } else {
+            self = .greenEmail
         }
     }
 }

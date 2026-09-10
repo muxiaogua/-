@@ -1244,9 +1244,11 @@ public class WorkbenchStore: ObservableObject {
                     if lower.contains("(test)") || lower.contains("[test]") || lower.contains(" test ") || lower.hasPrefix("test") || lower.contains("测试") || lower.contains("(practice)") || lower.contains("[practice]") || lower.contains("practice") || lower.contains("演练") {
                         return false
                     }
-                    // Only keep Green Email articles within 1 rolling year
+                    // Only keep Green Email articles strictly matching sender & keywords within 1 rolling year
                     if article.category == .greenEmail {
-                        return article.publishDate >= oneYearAgo
+                        let isSenderMatch = article.source.lowercased().contains("ic_gc_aha_sacs@apple.com") || article.source.isEmpty
+                        let isKeywordMatch = article.tags.contains("近期重要内容") || article.title.contains("近期重要内容")
+                        return article.publishDate >= oneYearAgo && isSenderMatch && isKeywordMatch
                     }
                     // Only keep Slack Support articles that actually contain a Records table
                     if article.category == .slackSupport {
@@ -1346,7 +1348,7 @@ public class WorkbenchStore: ObservableObject {
 public enum AppNavigationCategory: String, CaseIterable, Identifiable {
     case dashboard = "首页概览"
     case teamShare = "团队共享"
-    case npiFocus = "NPI重点"
+    case npiFocus = "NPI专题"
     case personalCenter = "个人中心"
     case queryCenter = "查询中心"
     case mutualHelp = "互帮互助"
@@ -1386,7 +1388,7 @@ public enum AppNavigationCategory: String, CaseIterable, Identifiable {
         case .teamShare:
             return [.announcements, .teamShifts]
         case .npiFocus:
-            return [.npiQuery]
+            return [.npiQuery, .rccFaqNpi]
         case .personalCenter:
             return [.shifts, .leaveRequest, .myStats]
         case .queryCenter:
@@ -1406,8 +1408,9 @@ public enum AppNavigationItem: String, CaseIterable, Identifiable {
     case announcements = "团队公告"
     case teamShifts = "团队班表"
     
-    // NPI重点
+    // NPI专题
     case npiQuery = "NPI 检索"
+    case rccFaqNpi = "RCC FAQ_NPI"
     
     // 个人中心
     case shifts = "我的班表"
@@ -1444,6 +1447,7 @@ public enum AppNavigationItem: String, CaseIterable, Identifiable {
         case .myStats: return "chart.bar.xaxis"
         case .news: return "envelope.fill"
         case .npiQuery: return "doc.text.magnifyingglass"
+        case .rccFaqNpi: return "questionmark.folder.fill"
         case .faq: return "questionmark.bubble.fill"
         case .priceQuery: return "tag.fill"
         case .caseAssistance: return "bubble.left.and.exclamationmark.bubble.right.fill"

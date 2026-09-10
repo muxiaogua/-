@@ -1381,7 +1381,280 @@ public class ChorusFAQSyncService: NSObject, ObservableObject {
             subCategory: "维修进度与异常处理",
             question: "客户致电反映 AASP 返厂维修进度长时间停滞或异常，应如何升级处理？",
             answer: "正常情况下 Apple 授权服务商会每天查看一次 GSX 中的维修状态，如果有异常会及时与客户联系。\n\n⚠️ 异常升级触发标准：\n• 设备到达维修中心但超过 3 个工作日仍未开始维修；\n• 或已开始维修但超过 7 个日历日仍未有进一步更新。\n\n升级路径：\n• 如果客户讲普通话，请联系 Tier 2；\n• 如果您是 Tier 2 Advisor（技术顾问），请联系 CR+ 处理。"
-        )
+        ),
+        ChorusFAQEntry(
+            pageId: "8077018",
+            category: "RCC FAQ_NPI",
+            subCategory: "联系与规范",
+            question: "如何通过 IVR 联系 RCC",
+            answer: "中国大陆：4006668800 - 1（隐私协议） - 1（普通话） - 2（官网订购/订单）\n台灣：0800020021 - 3（產品訂購）；0800020021 - 4（已有訂單咨詢）\n香港：800908988 - 1（产品订购）；800908988- 4（已有订单咨询）\n\n如果需要转接客户的的电话至 RCC，请在转接 RCC 前告知顾客正确联系 RCC 的方式，以防转接时断线。"
+        ),
+        ChorusFAQEntry(
+            pageId: "8077018",
+            category: "RCC FAQ_NPI",
+            subCategory: "联系与规范",
+            question: "对于更改取货时间、更改取货人信息的请求",
+            answer: "可以直接转接 RCC（原则上不允许改取货人，具体咨询 RCC）。"
+        ),
+        ChorusFAQEntry(
+            pageId: "8077018",
+            category: "RCC FAQ_NPI",
+            subCategory: "联系与规范",
+            question: "抖音与天猫 Apple Store 官方旗舰店订单咨询",
+            answer: "抖音 Apple Store 官方旗舰店 与 天猫 Apple Store 官方旗舰店 都是官方直营渠道，如果相关渠道购买产品的客户来电咨询订单相关问题，请指引客户联系相应平台客服，无需转接 RCC。"
+        ),
+        ChorusFAQEntry(
+            pageId: "8077018",
+            category: "RCC FAQ_NPI",
+            subCategory: "联系与规范",
+            question: "RCC 案例记录方式（NPI 前缀与售前/售后分类规则）",
+            answer: "从 9 月 10 日起，所有 2026 NPI 相关问题，请在案例标题前附加 “NPI”，如：“NPI 新品发售时间咨询”、“T2 NPI 无法移除 Beta OS”。\n\n【售前请求案例记录分类】：\n- 受影响的产品：非技术问题\n- 组件：与销售和服务相关\n- 问题：售前\n\n【活跃订单或售后问题案例记录分类】：\n- 受影响的产品：非技术问题\n- 组件：与销售和服务相关\n- 问题：售后"
+        ),
+        ChorusFAQEntry(
+            pageId: "8077018",
+            category: "RCC FAQ_NPI",
+            subCategory: "新品发布",
+            question: "购买新产品是否可以使用 Trade In 服务",
+            answer: "**中国大陆/台湾/香港**：可以。"
+        ),
+        ChorusFAQEntry(
+            pageId: "8077018",
+            category: "RCC FAQ_NPI",
+            subCategory: "新品发布",
+            question: "顾客数量限制无法下单",
+            answer: "**中国大陆/台湾/香港**：以官网的数量限制为准，或让客户联系 RCC 产品订购部门。"
+        ),
+        ChorusFAQEntry(
+            pageId: "8077018",
+            category: "RCC FAQ_NPI",
+            subCategory: "新品发布",
+            question: "咨询新产品店内何时有展示机",
+            answer: "**中国大陆/台湾/香港**：店内样品一般在可售卖当日在店内展示，但是每家零售店的到货时间不一，请建议客户以到店情况为准。"
+        ),
+        ChorusFAQEntry(
+            pageId: "8077018",
+            category: "RCC FAQ_NPI",
+            subCategory: "新品发布",
+            question: "新品正式发售当日，能否直接前往 ARS 现场购买新品？",
+            answer: "客户可使用 APU: Apple Store pickup (到店取货) 的方式购买，根据产品页面显示查看Apple Store 零售店供货情况。如果页面显示目前暂不提供 Apple Store 零售店取货服务，建议客户改日再试或选择在线订购送货上门。"
+        ),
+        ChorusFAQEntry(
+            pageId: "8077018",
+            category: "RCC FAQ_NPI",
+            subCategory: "售前咨询",
+            question: "咨询新品购买时间/产品配置/性能",
+            answer: "**中国大陆/台湾/香港：**建议客户留意官网产品页面信息。"
+        ),
+        ChorusFAQEntry(
+            pageId: "8077018",
+            category: "RCC FAQ_NPI",
+            subCategory: "售前咨询",
+            question: "已下架/降价产品购买",
+            answer: "**中国大陆/台湾/香港：**官网已下架，可让客户联系零售店询问店内库存情况但不可保证一定有货。"
+        ),
+        ChorusFAQEntry(
+            pageId: "8077018",
+            category: "RCC FAQ_NPI",
+            subCategory: "售前咨询",
+            question: "购买及支付方式咨询",
+            answer: "**中国大陆/台湾/香港：**以官网可见的购买支付方式为准。"
+        ),
+        ChorusFAQEntry(
+            pageId: "8077018",
+            category: "RCC FAQ_NPI",
+            subCategory: "售前咨询",
+            question: "顾客咨询如何加入年年焕新计划（售前）",
+            answer: "**中国大陆：**只需购买指定新款 iPhone，并在同一笔交易中加购 AppleCare+ 服务计划即可。本计划在中国大陆的 Apple Store 在线商店及零售店提供（Apple Store 天猫官方旗舰店不参加）。\n\n参照 https://www.apple.com.cn/shop/iphone/iphone-upgrade-program(https://www.apple.com.cn/shop/iphone/iphone-upgrade-program)。\n\n**台湾/香港：**没有年年焕新服务。"
+        ),
+        ChorusFAQEntry(
+            pageId: "8077018",
+            category: "RCC FAQ_NPI",
+            subCategory: "售前咨询",
+            question: "顾客去年在店铺购买 iPhone 的同时添加了 AC+，今年可在官网焕新吗？",
+            answer: "**中国大陆：**无论通过在线还是到店加入本计划，都可从两种方式里任选一种进行升级换购。\n\n**台湾/香港：**没有年年焕新服务。"
+        ),
+        ChorusFAQEntry(
+            pageId: "8077018",
+            category: "RCC FAQ_NPI",
+            subCategory: "售前咨询",
+            question: "顾客在官⽹⽆法查询到年年焕新的资格",
+            answer: "**中国⼤陆：** 如果客户是在 Apple Store 零售店参与本计划，请客户联系零售店；如果客户在 Apple Store 在线商店参与本计划，请让客户准备好之前的订单号，随后转接 RCC 销售⽀持部门。\n\n**台湾/⾹港：**没有年年焕新服务。"
+        ),
+        ChorusFAQEntry(
+            pageId: "8077018",
+            category: "RCC FAQ_NPI",
+            subCategory: "订单管理",
+            question: "下单后顾客订单查询页面显示订单未付款/未显示订单/无法自行取消订单/不显示取消订单按钮/修改订单",
+            answer: "**中国⼤陆/台湾/⾹港：**在订单量较大的发售活动期间，订单会花更长时间才会显示在系统中，并且订单后续的状态需要一些时间同步，请顾客耐心等待。\n\n如果顾客要求修改/查询/反馈相应的订单情况，可告知顾客，由于订单量较大，查询和修改订单功能需要一些时间同步和更新。请顾客可以后续尝试访问“在线自助服务”并修改订单，或是晚些时候再联系 Apple。\n\n**非NPI期间：**建议顾客登录订单状态页面查询最新状态。如果顾客还有相关订单疑问，请转接至 RCC 销售支持部门。"
+        ),
+        ChorusFAQEntry(
+            pageId: "8077018",
+            category: "RCC FAQ_NPI",
+            subCategory: "订单管理",
+            question: "发货/订单到货时间确认/顾客催促订单发货",
+            answer: "**中国大陆/台湾/香港：**在我们收到付款且系统向顾客发送订单确认电子邮件前，发货和送货日期仅为参考日期。请顾客查看官网订单查询页面，查看到的送货日期就是是下单时可交付最早的送货日期，请顾客耐心等待订单后续交付。\n\n我们不能帮顾客加急，准确的发货时间请以含有物流单号信息的发货邮件或 iMessage 信息消息为准。请勿揣测或评价 Apple 的发货顺序，例如: 先买先发等。"
+        ),
+        ChorusFAQEntry(
+            pageId: "8077018",
+            category: "RCC FAQ_NPI",
+            subCategory: "订单管理",
+            question: "更改产品颜色/容量/地址",
+            answer: "**中国大陆/台湾/香港：**仅限订单正在处理状态下的修改，如果还未收到发货通知，可以尝试通过[订单列表](https://secure.www.apple.com.cn/shop/order/list)页面在线修改送货详细信息。 修改订单会影响发货时间，在订单量较大的发售活动期间，不建议顾客针对订单修改。如果无法自助修改，请联系 RCC。"
+        ),
+        ChorusFAQEntry(
+            pageId: "8077018",
+            category: "RCC FAQ_NPI",
+            subCategory: "订单管理",
+            question: "顾客表示自己是送货上门的订单想更换成到店取货",
+            answer: "我们无法协助客户更改取货方式。"
+        ),
+        ChorusFAQEntry(
+            pageId: "8077018",
+            category: "RCC FAQ_NPI",
+            subCategory: "订单管理",
+            question: "顾客要取消订单",
+            answer: "**中国大陆/台湾/香港：**可告知客户前往官网查看订单自行操作(如果订单显示还在处理中-顾客可以直接取消，订单已准备发货-顾客无法操作，订单显示已发货-顾客可以在收到货之后在订单页面中自己点击申请退货), 如果顾客表示自己在页面上无法操作，联系 RCC 销售支持部门。 \n\n**注意:** 香港订单需要退货会收取15%费用。"
+        ),
+        ChorusFAQEntry(
+            pageId: "8077018",
+            category: "RCC FAQ_NPI",
+            subCategory: "订单管理",
+            question: "已取消的订单可以恢复吗？",
+            answer: "不可以 - 重新下单， 重新看发货周期 ，无需转接RCC"
+        ),
+        ChorusFAQEntry(
+            pageId: "8077018",
+            category: "RCC FAQ_NPI",
+            subCategory: "订单管理",
+            question: "顾客表示自己已经取消订单，想询问退款时间",
+            answer: "请顾客登录 Apple 官网查看订单页面的付款方式，并引导顾客去相应地区的以下页面，查询相应付款方式的退款时间。\n\n**中国大陆:** https://www.apple.com.cn/shop/help/returns\\_refund(https://www.apple.com.cn/shop/help/returns_refund)\n\n**台湾:** \n\n**香港:**"
+        ),
+        ChorusFAQEntry(
+            pageId: "8077018",
+            category: "RCC FAQ_NPI",
+            subCategory: "订单管理",
+            question: "客户反馈下单之后重复提交了付款，或者发现重复扣费的情况",
+            answer: "如果顾客确认其重复提交了付款，告知顾客在 Apple 处理该订单的付款后(即订单更新成正在处理状态)，退款将自动触发并处理，顾客可以根据链接中订单的付款类型了解退款时间安排。\n\n**中国大陆:** https://www.apple.com.cn/shop/help/returns\\_refund(https://www.apple.com.cn/shop/help/returns_refund)\n\n**台湾:** \n\n**香港:**"
+        ),
+        ChorusFAQEntry(
+            pageId: "8077018",
+            category: "RCC FAQ_NPI",
+            subCategory: "订单管理",
+            question: "发票请求 （Apple Store 在线商店购买）",
+            answer: "可以参考 https://www.apple.com.cn/shop/help/invoice(https://www.apple.com.cn/shop/help/invoice) 提供基本信息。\n\n询问客户是否在下单时勾选/填写了发票。\n\n1. 如果有，请建议客户在 apple.com.cn/store(http://apple.com.cn/store) 上查看他们的订单历史记录，以获取过去 18 个月内的收据副本/发票。如果客户无法找到相应收据/发票，请联系销售支持部门。不要设定预期。([124695](core://articleId=124695\\&locale=zh_CN))。\n2. 如果没有，请建议客户优先使用以下自助服务。若客户拒绝，请请联系销售支持部门。不要设定预期。([124695](core://articleId=124695\\&locale=zh_CN))\\\n   微信 Apple 服务号：客户可使用 “向我提问” 功能，然后输入关键词 “发票”，就可以收到申请发票补开和换开相关的自助指引。"
+        ),
+        ChorusFAQEntry(
+            pageId: "8077018",
+            category: "RCC FAQ_NPI",
+            subCategory: "订单管理",
+            question: "国家补贴活动订单送货规则",
+            answer: "购买后，你将无法更改送货地址或发票类型。你需要配合快递员完成必要步骤，如现场开箱、激活产品及拍照存档。[进一步了解国家补贴活动](https://www.apple.com.cn/promo/)"
+        ),
+        ChorusFAQEntry(
+            pageId: "8077018",
+            category: "RCC FAQ_NPI",
+            subCategory: "订单管理",
+            question: "客户反馈其他电商平台（如天猫、抖音、京东等）或渠道正在降价促销，要求退差价/比价，该如何处理？",
+            answer: "客户反馈其他电商平台（如天猫、抖音、京东等）或渠道正在降价促销，要求退差价/比价，该如何处理？Apple 官网未参与此类促销活动，因此不支持比价或退差价政策，**无需**转接 RCC。\n\n* 对于天猫、抖音的 Apple 官方店铺订单，引导客户直接联系对应平台的客服获取相关服务与协助。\n* 针对京东等第三方平台订单，由于各销售渠道的客服与价格政策相互独立，请引导客户联系相应第三方平台的官方客服寻求解决方案。"
+        ),
+        ChorusFAQEntry(
+            pageId: "8077018",
+            category: "RCC FAQ_NPI",
+            subCategory: "Apple Trade In",
+            question: "查询 Trade-in 状态 (申请 Trade-in 后客户询问具体状态: 上门取件时间/取件状态/物流跟踪等。)",
+            answer: "请客户登录 Trade-in 订单页面跟踪以及更改基本信息和状态：https://secure.www.apple.com.cn/shop/order/list(https://secure.www.apple.com.cn/shop/order/list)。"
+        ),
+        ChorusFAQEntry(
+            pageId: "8077018",
+            category: "RCC FAQ_NPI",
+            subCategory: "Apple Trade In",
+            question: "我的设备可以折抵多少钱",
+            answer: "这取决于设备及其型号、制造商和状况。你只需回答几个关于你设备的问题，我们就会给出折抵金额估价。"
+        ),
+        ChorusFAQEntry(
+            pageId: "8077018",
+            category: "RCC FAQ_NPI",
+            subCategory: "Apple Trade In",
+            question: "收到了经过调整的折抵金额报价",
+            answer: "当你的设备状况与你的描述不符时，我们会调整折抵金额报价。如果调整后的金额低于最初的估价，你可以选择接受或拒绝新的金额。"
+        ),
+        ChorusFAQEntry(
+            pageId: "8077018",
+            category: "RCC FAQ_NPI",
+            subCategory: "Apple Trade In",
+            question: "我需要交回配件才能全额获得折抵优惠吗？",
+            answer: "你不必交回充电器、连接线、保护壳和表带这些配件，但只要你愿意，也可以将它们交给我们，我们会进行负责任的回收处理。但是，如果之后你取消了折抵换购，这些配件将无法再退还给你。"
+        ),
+        ChorusFAQEntry(
+            pageId: "8077018",
+            category: "RCC FAQ_NPI",
+            subCategory: "Apple Trade In",
+            question: "14 天之内产品更换请求",
+            answer: "建议客户直接联系“购买地”"
+        ),
+        ChorusFAQEntry(
+            pageId: "8077018",
+            category: "RCC FAQ_NPI",
+            subCategory: "其它",
+            question: "到店取货订单要求更改取货时间、更改取货人信息",
+            answer: "转接 RCC"
+        ),
+        ChorusFAQEntry(
+            pageId: "8077018",
+            category: "RCC FAQ_NPI",
+            subCategory: "其它",
+            question: "ARS 能否为官网购买的配件（手机膜）等提供服务支持？",
+            answer: "零售店里有两种版本的贴膜：\n\n* 和 Apple Online Store 一样的盒装版，客户可自行操作（此版本内含贴膜辅助工具）。\n* 零售店售卖的专有版本，需要配合店内的贴膜机一起使用。\\\n  注意：如果客户有购买了前者盒装版本后想前去零售店要求协助，请告知客户可以跟随说明书自行安装，零售店无法协助贴膜"
+        ),
+        ChorusFAQEntry(
+            pageId: "8077018",
+            category: "RCC FAQ_NPI",
+            subCategory: "其它",
+            question: "咨询价格保护",
+            answer: "**中国大陆/台湾/香港：**Apple 在客户收到产品之日起 14 个日历日内降低任何Apple 品牌产品的价格，可以联系 RCC 销售支持部门，申请退还所支付的价格和当前销售价格之间的差额，或者换取抵扣额。客户必须在价格变更后 14 个日历日内联系 RCC 销售支持部门 ，方可收到退款或抵扣额。"
+        ),
+        ChorusFAQEntry(
+            pageId: "8077018",
+            category: "RCC FAQ_NPI",
+            subCategory: "其它",
+            question: "已下架/降价产品的超期退换货",
+            answer: "**中国大陆：**参照:u[]https://www.apple.com.cn/shop/help/returns\\_refund(https://www.apple.com.cn/shop/help/returns_refund) 官网退货退款政策。不支持超期退换货。\n\n**台湾：**参照 https://www.apple.com/tw/shop/open/salespolicies(https://www.apple.com/tw/shop/open/salespolicies) 符合退货条件的产品，请于取得产品之日起十四个日历日内办理退货申请。**零售店购买的产品不支持退货。**\n\n**香港：**参照 https://www.apple.com/hk-zh/shop/open/salespolicies(https://www.apple.com/hk-zh/shop/open/salespolicies) 所有于香港Apple Store 购买的产品均不可退货或更换。仅当货品属于问题产品，才可视为例外情况予以更换。"
+        ),
+        ChorusFAQEntry(
+            pageId: "8077018",
+            category: "RCC FAQ_NPI",
+            subCategory: "其它",
+            question: "顾客可以选择哪些送货方式？何时能收到商品？",
+            answer: "**中国大陆/台湾/香港：**预计送达日期根据商品供应情况和你选择的送货方式估算得出。下单后，你会知道最终确认的送达日期。\n\n所有在线订单均可享受免费标准送货服务。根据你所在的位置，你的订单可能符合 Apple Store 零售店取货的条件。你可以在结账时直接选择前往附近的Apple Store 零售店取货。\n\n通过 apple.com.cn(https://www.apple.com.cn/) 下单订购，只能发货至购物时所在的国家或地区。请按照你希望产品送达的国家或地区，访问相应的在线商店购物。"
+        ),
+        ChorusFAQEntry(
+            pageId: "8077018",
+            category: "RCC FAQ_NPI",
+            subCategory: "其它",
+            question: "物流异常，产品未按时送达",
+            answer: "**中国大陆/台湾/香港：**告知客户前往官网查看订单最新发货状态或联系 RCC 销售支持部门。"
+        ),
+        ChorusFAQEntry(
+            pageId: "8077018",
+            category: "RCC FAQ_NPI",
+            subCategory: "其它",
+            question: "客户反馈无法在 Apple Store App 中绑定银联卡作为 “主要付款方式”",
+            answer: "此问题为预期现象，在绑定付款方式的页面中会提示接受的付款方式为 “Visa, Mastercard”，不包括 “银联”，所以可以指引客户使用  “Visa, Mastercard” 的银行卡进行绑定。\n\n可以提醒客户 Apple Store App 的付款方式除了绑定银行卡，还可以选择 Apple Pay、支付宝、微信支付等。"
+        ),
+        ChorusFAQEntry(
+            pageId: "8077018",
+            category: "RCC FAQ_NPI",
+            subCategory: "其它",
+            question: "顾客咨询到店取货需要携带哪些信息",
+            answer: "请顾客查看以下链接，获取到店取货的注意事项。\n\n**中国大陆:** https://\\ww.apple.com.cn/shop/help/shipping\\_delivery(https://www.apple.com.cn/shop/help/shipping_delivery)\n\n**台湾:** https://www.apple.com/tw/shop/help/shipping\\_delivery(https://www.apple.com/tw/shop/help/shipping_delivery)\n\n**香港:** https://www.apple.com/hk-zh/shop/help/shipping\\_delivery(https://www.apple.com/hk-zh/shop/help/shipping_delivery)"
+        ),
+        ChorusFAQEntry(
+            pageId: "8077018",
+            category: "RCC FAQ_NPI",
+            subCategory: "其它",
+            question: "天猫 Apple Store 官方旗舰店国家补贴活动中的发票信息",
+            answer: "对于天猫 Apple Store 官方旗舰店北京地区销售的产品：\n- 序列号信息会印在发票上，发票销售方信息为 Apple。\n\n对于天猫 Apple Store 官方旗舰店非北京地区销售的产品：\n- 发票上所包含的信息，根据不同省份的要求会有所不同。\n- 对于一些省份，序列号信息不会印在发票上。\n- 发票销售方信息为第三方托管公司。\n- 请参考产品详情页面以查看开票服务提供公司和营业执照列表。"
+        ),
     ]
     
     /// Syncs and updates all FAQ items from Chorus into WorkbenchStore & iCloud shared folder

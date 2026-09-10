@@ -10,7 +10,7 @@ public struct NewsView: View {
     @ObservedObject var mailSyncService = MailSyncService.shared
     
     @State private var selectedArticleID: UUID?
-    @State private var selectedCategory: NewsCategory = .all
+    @State private var selectedCategory: NewsCategory = .unread
     @State private var onlyUnread: Bool = false
     @State private var onlyBookmarked: Bool = false
     @State private var searchText: String = ""
@@ -18,26 +18,36 @@ public struct NewsView: View {
     // Comment input state
     @State private var newCommentText: String = ""
     @State private var showCommentSuccessToast: Bool = false
-    @State private var showSyncAlert: Bool = false
     @State private var showDiscussionSection: Bool = true
-    @State private var showConfirmClearNewsAlert: Bool = false
-    @State private var showClearNewsSuccessAlert: Bool = false
+    
+    enum NewsAlert: Identifiable {
+        case confirmClearNews
+        case clearNewsSuccess
+        case syncResult
+        
+        var id: String {
+            switch self {
+            case .confirmClearNews: return "confirmClearNews"
+            case .clearNewsSuccess: return "clearNewsSuccess"
+            case .syncResult: return "syncResult"
+            }
+        }
+    }
+    
+    @State private var activeAlert: NewsAlert? = nil
     
     public init() {}
     
-    private var isBrowsingAllWithoutSearch: Bool {
-        selectedCategory == .all && searchText.trimmingCharacters(in: .whitespaces).isEmpty
-    }
-    
     private var filteredArticles: [NewsArticle] {
-        if isBrowsingAllWithoutSearch {
-            return []
-        }
-        
         let tokens = searchText.split(whereSeparator: { $0.isWhitespace || $0 == "+" || $0 == "," }).map(String.init).filter { !$0.isEmpty }
         
         return store.newsArticles.filter { article in
-            if selectedCategory != .all && article.category != selectedCategory {
+            if selectedCategory == .unread {
+                // "未读" 分类下：只显示未读邮件，但始终保留当前正在选中的邮件（防止刚点开阅读就立刻从列表中消失）
+                if store.readNewsArticleIDs.contains(article.id) && article.id != selectedArticleID {
+                    return false
+                }
+            } else if article.category != selectedCategory {
                 return false
             }
             if onlyUnread && store.readNewsArticleIDs.contains(article.id) {
@@ -75,34 +85,42 @@ public struct NewsView: View {
             articleReaderSection
                 .frame(minWidth: 460, maxWidth: .infinity)
         }
-        .alert("确认清空所有重要邮件缓存？", isPresented: $showConfirmClearNewsAlert) {
-            Button("确认清空", role: .destructive) {
-                store.clearAllNewsArticles()
-                showClearNewsSuccessAlert = true
-            }
-            Button("取消", role: .cancel) { }
-        } message: {
-            Text("此操作将彻底清除本地与云端存储的所有 Green Email 邮件内容并重置为空白状态。\n\n该操作无法撤销，确定要清空吗？")
-        }
-        .alert("邮件数据已清空", isPresented: $showClearNewsSuccessAlert) {
-            Button("确定", role: .cancel) { }
-        } message: {
-            Text("所有重要邮件缓存已成功清空。")
-        }
-        .alert("邮件同步结果", isPresented: $showSyncAlert) {
-            if mailSyncService.needsPrivacySettingsGuide {
-                Button("打开系统设置") {
-                    mailSyncService.openAutomationPrivacySettings()
+        .alert(item: $activeAlert) { alertType in
+            switch alertType {
+            case .confirmClearNews:
+                return Alert(
+                    title: Text("确认清空所有重要邮件缓存？"),
+                    message: Text("此操作将彻底清除本地与云端存储的所有 Green Email 邮件内容并重置为空白状态。\n\n该操作无法撤销，确定要清空吗？"),
+                    primaryButton: .destructive(Text("确认清空")) {
+                        store.clearAllNewsArticles()
+                        activeAlert = .clearNewsSuccess
+                    },
+                    secondaryButton: .cancel(Text("取消"))
+                )
+            case .clearNewsSuccess:
+                return Alert(
+                    title: Text("邮件数据已清空"),
+                    message: Text("所有重要邮件缓存已成功清空。"),
+                    dismissButton: .default(Text("确定"))
+                )
+            case .syncResult:
+                if mailSyncService.needsPrivacySettingsGuide {
+                    return Alert(
+                        title: Text("邮件同步结果"),
+                        message: Text(mailSyncService.errorMessage ?? "请授予邮件访问权限"),
+                        primaryButton: .default(Text("打开系统设置")) {
+                            mailSyncService.openAutomationPrivacySettings()
+                        },
+                        secondaryButton: .cancel(Text("稍后设置"))
+                    )
+                } else {
+                    let msg = mailSyncService.errorMessage ?? mailSyncService.lastSyncResult ?? "同步完成"
+                    return Alert(
+                        title: Text("邮件同步结果"),
+                        message: Text(msg),
+                        dismissButton: .default(Text("确定"))
+                    )
                 }
-                Button("稍后设置", role: .cancel) { }
-            } else {
-                Button("确定", role: .cancel) { }
-            }
-        } message: {
-            if let error = mailSyncService.errorMessage {
-                Text(error)
-            } else if let result = mailSyncService.lastSyncResult {
-                Text(result)
             }
         }
         .onAppear {
@@ -111,6 +129,23 @@ public struct NewsView: View {
                 selectedCategory = article.category
                 selectedArticleID = article.id
                 store.markNewsArticleAsRead(id: article.id)
+            } else if selectedCategory == .unread {
+                if store.unreadNewsCount > 0 {
+                    selectedArticleID = filteredArticles.first?.id
+                    if let firstID = selectedArticleID {
+                        store.selectedNewsArticleID = firstID
+                        store.markNewsArticleAsRead(id: firstID)
+                    }
+                } else {
+                    selectedArticleID = nil
+                    store.selectedNewsArticleID = nil
+                }
+            } else if selectedArticleID == nil {
+                selectedArticleID = filteredArticles.first?.id
+                if let firstID = selectedArticleID {
+                    store.selectedNewsArticleID = firstID
+                    store.markNewsArticleAsRead(id: firstID)
+                }
             }
         }
         .onChange(of: store.selectedNewsArticleID) { _, newID in
@@ -122,10 +157,15 @@ public struct NewsView: View {
             }
         }
         .onChange(of: selectedCategory) { _, newCat in
-            if newCat == .all && searchText.trimmingCharacters(in: .whitespaces).isEmpty {
+            if newCat == .unread && store.unreadNewsCount == 0 {
                 selectedArticleID = nil
-            } else if selectedArticleID != nil && !filteredArticles.contains(where: { $0.id == selectedArticleID }) {
-                selectedArticleID = nil
+                store.selectedNewsArticleID = nil
+            } else if selectedArticleID == nil || !filteredArticles.contains(where: { $0.id == selectedArticleID }) {
+                selectedArticleID = filteredArticles.first?.id
+                if let firstID = selectedArticleID {
+                    store.selectedNewsArticleID = firstID
+                    store.markNewsArticleAsRead(id: firstID)
+                }
             }
         }
         .onChange(of: selectedArticleID) { _, newID in
@@ -207,7 +247,7 @@ public struct NewsView: View {
                         if store.isDefaultAdmin(name: store.currentUser.name) {
                             Divider()
                             Button("清空所有邮件缓存", role: .destructive) {
-                                showConfirmClearNewsAlert = true
+                                activeAlert = .confirmClearNews
                             }
                         }
                     }
@@ -226,6 +266,16 @@ public struct NewsView: View {
                                 .font(.system(size: 9.5))
                             Text(cat.rawValue)
                                 .font(.system(size: 11, weight: isSelected ? .semibold : .regular))
+                            
+                            if cat == .unread && store.unreadNewsCount > 0 {
+                                Text("\(store.unreadNewsCount)")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .padding(.horizontal, 4.5)
+                                    .padding(.vertical, 1)
+                                    .background(isSelected ? Color.white.opacity(0.3) : Color.blue)
+                                    .foregroundColor(.white)
+                                    .clipShape(Capsule())
+                            }
                         }
                         .padding(.horizontal, 10)
                         .padding(.vertical, 4.5)
@@ -246,12 +296,14 @@ public struct NewsView: View {
             
             // 3. Only Unread / Bookmarked Toggle + Mark All as Read + Total Count
             HStack(spacing: 8) {
-                Toggle(isOn: $onlyUnread) {
-                    Text("只看未读")
-                        .font(.system(size: 11))
-                        .foregroundColor(onlyUnread ? .blue : .secondary)
+                if selectedCategory != .unread {
+                    Toggle(isOn: $onlyUnread) {
+                        Text("只看未读")
+                            .font(.system(size: 11))
+                            .foregroundColor(onlyUnread ? .blue : .secondary)
+                    }
+                    .toggleStyle(.checkbox)
                 }
-                .toggleStyle(.checkbox)
                 
                 Toggle(isOn: $onlyBookmarked) {
                     Label("只看收藏", systemImage: "bookmark.fill")
@@ -297,7 +349,7 @@ public struct NewsView: View {
                         .foregroundColor(.secondary)
                 }
                 
-                Text(isBrowsingAllWithoutSearch ? "· 共 \(store.newsArticles.count) 封" : "· 共 \(filteredArticles.count) 封")
+                Text("· 共 \(filteredArticles.count) 封")
                     .font(.system(size: 10.5))
                     .foregroundColor(.secondary)
             }
@@ -308,12 +360,35 @@ public struct NewsView: View {
     
     private var compactNewsListSection: some View {
         Group {
-            if isBrowsingAllWithoutSearch {
+            if selectedCategory == .unread && filteredArticles.isEmpty {
                 VStack(spacing: 12) {
                     Spacer()
-                    Text("请输入关键词或选择上方分类查看内容")
-                        .font(.system(size: 13, weight: .regular))
-                        .foregroundColor(Color(NSColor.secondaryLabelColor))
+                    ZStack {
+                        Circle()
+                            .fill(Color.green.opacity(0.12))
+                            .frame(width: 52, height: 52)
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 26))
+                            .foregroundColor(.green)
+                    }
+                    Text("暂无未读邮件")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(.primary)
+                    Text("所有重要邮件均已阅读完成。\n可在上方选择分类查看 Green Email 或 Slack Support。")
+                        .font(.system(size: 12))
+                        .multilineTextAlignment(.center)
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 24)
+                    
+                    if store.canCurrentUserSyncData {
+                        Button("从邮件 App 检查新邮件") {
+                            triggerMailSync(forceFullSync: false)
+                        }
+                        .font(.system(size: 11.5))
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .padding(.top, 4)
+                    }
                     Spacer()
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -407,18 +482,7 @@ public struct NewsView: View {
     
     private var articleReaderSection: some View {
         Group {
-            if isBrowsingAllWithoutSearch {
-                VStack(spacing: 12) {
-                    Image(systemName: "envelope.open")
-                        .font(.system(size: 40))
-                        .foregroundColor(.secondary.opacity(0.4))
-                    Text("请输入关键词或在左侧选择分类查看邮件")
-                        .font(.system(size: 13.5))
-                        .foregroundColor(.secondary)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(NSColor.controlBackgroundColor))
-            } else if let id = selectedArticleID,
+            if let id = selectedArticleID,
                let article = store.newsArticles.first(where: { $0.id == id }) {
                 VStack(spacing: 0) {
                     // Top Title Header Bar
@@ -485,6 +549,20 @@ public struct NewsView: View {
                             .padding(.vertical, 10)
                             .background(Color(NSColor.controlBackgroundColor))
                     }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color(NSColor.controlBackgroundColor))
+            } else if selectedCategory == .unread && filteredArticles.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: "tray.fill")
+                        .font(.system(size: 40))
+                        .foregroundColor(.secondary.opacity(0.35))
+                    Text("暂无未读邮件")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.secondary)
+                    Text("当前没有待阅读的重要邮件，界面保持清爽")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary.opacity(0.8))
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color(NSColor.controlBackgroundColor))
@@ -578,8 +656,8 @@ public struct NewsView: View {
     private func triggerMailSync(forceFullSync: Bool = false) {
         Task {
             _ = await mailSyncService.syncGreenEmailsFromMail(into: store, forceFullSync: forceFullSync)
-            showSyncAlert = true
-            if selectedCategory != .all && selectedArticleID == nil {
+            activeAlert = .syncResult
+            if selectedArticleID == nil {
                 selectedArticleID = filteredArticles.first?.id
             }
         }
@@ -618,7 +696,7 @@ public struct NewsView: View {
     
     private func categoryHighlightColor(_ cat: NewsCategory) -> Color {
         switch cat {
-        case .all: return Color(NSColor.labelColor)
+        case .unread: return Color.blue
         case .greenEmail: return Color.green
         case .slackSupport: return Color.purple
         }

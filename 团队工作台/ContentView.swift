@@ -11,6 +11,7 @@ public struct ContentView: View {
     @EnvironmentObject var store: WorkbenchStore
     @ObservedObject var sharedFolderSync = SharedFolderSyncService.shared
     @ObservedObject var notificationService = NotificationService.shared
+    @ObservedObject var updateService = AppUpdateService.shared
     
     @State private var isRefreshing = false
     
@@ -46,6 +47,12 @@ public struct ContentView: View {
                     store.selectedCategory = cat
                 }
             }
+        }
+        .sheet(isPresented: $updateService.showUpdateSheet) {
+            AppUpdateSheetView()
+        }
+        .onAppear {
+            updateService.checkForUpdates(isUserInitiated: false)
         }
     }
     
@@ -409,11 +416,15 @@ public struct ContentView: View {
                 case .myStats:
                     PlaceholderReservedView(title: "数据统计", icon: "chart.bar.xaxis", subtitle: "个人业务指标与工作数据分析看板正在建设中，即将上线！")
                     
+                // NPI专题
+                case .npiQuery:
+                    NPIQueryView()
+                case .rccFaqNpi:
+                    RCCNPIFAQView()
+                    
                 // 查询中心
                 case .news:
                     NewsView()
-                case .npiQuery:
-                    NPIQueryView()
                 case .faq:
                     FAQView()
                 case .priceQuery:

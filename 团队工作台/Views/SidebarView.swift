@@ -50,6 +50,7 @@ public struct SidebarView: View {
         case .myStats: return .teal
         case .news: return .green
         case .npiQuery: return .teal
+        case .rccFaqNpi: return .orange
         case .faq: return .blue
         case .priceQuery: return .yellow
         case .caseAssistance: return .pink

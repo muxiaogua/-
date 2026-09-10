@@ -32,6 +32,7 @@ public struct NPIQueryView: View {
     
     // Detail Item selection for preview
     @State private var selectedItem: NpiIssueItem? = nil
+    @State private var showConfirmClearAlert: Bool = false
     
     // Dynamic available product categories extracted from existing data
     private var dynamicProductTypes: [String] {

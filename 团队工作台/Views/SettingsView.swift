@@ -9,12 +9,27 @@ public struct SettingsView: View {
     @EnvironmentObject var store: WorkbenchStore
     @ObservedObject var notificationService = NotificationService.shared
     @ObservedObject var sharedFolderSync = SharedFolderSyncService.shared
+    @ObservedObject var updateService = AppUpdateService.shared
     
-    @State private var showConfirmClearAlert = false
-    @State private var showClearSuccessAlert = false
-    @State private var showConfirmClearNewsAlert = false
-    @State private var showClearNewsSuccessAlert = false
-    @State private var showTestNotificationAlert = false
+    enum SettingsAlert: Identifiable {
+        case confirmClearNews
+        case clearNewsSuccess
+        case confirmClearLocal
+        case clearLocalSuccess
+        case testNotificationSent
+        
+        var id: String {
+            switch self {
+            case .confirmClearNews: return "confirmClearNews"
+            case .clearNewsSuccess: return "clearNewsSuccess"
+            case .confirmClearLocal: return "confirmClearLocal"
+            case .clearLocalSuccess: return "clearLocalSuccess"
+            case .testNotificationSent: return "testNotificationSent"
+            }
+        }
+    }
+    
+    @State private var activeAlert: SettingsAlert? = nil
     @State private var showEditProfileSheet = false
     @State private var showAddPermissionSheet = false
     
@@ -81,38 +96,47 @@ public struct SettingsView: View {
             .padding(28)
         }
         .background(Color(NSColor.windowBackgroundColor))
-        .alert("确认清空重要邮件数据？", isPresented: $showConfirmClearNewsAlert) {
-            Button("确认清空", role: .destructive) {
-                store.clearAllNewsArticles()
-                showClearNewsSuccessAlert = true
+        .alert(item: $activeAlert) { alertType in
+            switch alertType {
+            case .confirmClearNews:
+                return Alert(
+                    title: Text("确认清空重要邮件数据？"),
+                    message: Text("此操作将彻底清除本地与云端已保存的全部重要邮件（Green Email）内容并重置为空白状态。\n\n该操作无法撤销，确定要清空吗？"),
+                    primaryButton: .destructive(Text("确认清空")) {
+                        store.clearAllNewsArticles()
+                        activeAlert = .clearNewsSuccess
+                    },
+                    secondaryButton: .cancel(Text("取消"))
+                )
+            case .clearNewsSuccess:
+                return Alert(
+                    title: Text("邮件数据已清空"),
+                    message: Text("所有重要邮件缓存与云端同步记录已成功清空。"),
+                    dismissButton: .default(Text("确定"))
+                )
+            case .confirmClearLocal:
+                return Alert(
+                    title: Text("确认清空本地数据？"),
+                    message: Text("此操作将清除当前电脑上本地缓存的全部公告、邮件与已读记录，不影响他人与云端共享文件。\n\n确定要清空吗？"),
+                    primaryButton: .destructive(Text("确认清空")) {
+                        store.clearAllLocalData()
+                        activeAlert = .clearLocalSuccess
+                    },
+                    secondaryButton: .cancel(Text("取消"))
+                )
+            case .clearLocalSuccess:
+                return Alert(
+                    title: Text("本地数据已清空"),
+                    message: Text("当前电脑的本地缓存内容已清理完毕，重新打开或同步即可按需拉取。"),
+                    dismissButton: .default(Text("确定"))
+                )
+            case .testNotificationSent:
+                return Alert(
+                    title: Text("测试通知已发送"),
+                    message: Text("已通过 macOS 系统通知中心发送一条测试横幅，请留意屏幕右上角。"),
+                    dismissButton: .default(Text("好"))
+                )
             }
-            Button("取消", role: .cancel) { }
-        } message: {
-            Text("此操作将彻底清除本地与云端已保存的全部重要邮件（Green Email）内容并重置为空白状态。\n\n该操作无法撤销，确定要清空吗？")
-        }
-        .alert("邮件数据已清空", isPresented: $showClearNewsSuccessAlert) {
-            Button("确定", role: .cancel) { }
-        } message: {
-            Text("所有重要邮件缓存与云端同步记录已成功清空。")
-        }
-        .alert("确认清空本地数据？", isPresented: $showConfirmClearAlert) {
-            Button("确认清空", role: .destructive) {
-                store.clearAllLocalData()
-                showClearSuccessAlert = true
-            }
-            Button("取消", role: .cancel) { }
-        } message: {
-            Text("此操作将清除当前电脑上本地缓存的全部公告、邮件与已读记录，不影响他人与云端共享文件。\n\n确定要清空吗？")
-        }
-        .alert("本地数据已清空", isPresented: $showClearSuccessAlert) {
-            Button("确定", role: .cancel) { }
-        } message: {
-            Text("当前电脑的本地缓存内容已清理完毕，重新打开或同步即可按需拉取。")
-        }
-        .alert("测试通知已发送", isPresented: $showTestNotificationAlert) {
-            Button("好", role: .cancel) { }
-        } message: {
-            Text("已通过 macOS 系统通知中心发送一条测试横幅，请留意屏幕右上角。")
         }
         .sheet(isPresented: $showEditProfileSheet) {
             editProfileSheetView
@@ -943,7 +967,7 @@ public struct SettingsView: View {
                             subtitle: "通知通道测试",
                             body: "恭喜！您的 macOS 团队工作台本地通知通道运行正常。"
                         )
-                        showTestNotificationAlert = true
+                        activeAlert = .testNotificationSent
                     }
                     .controlSize(.small)
                 }
@@ -989,7 +1013,7 @@ public struct SettingsView: View {
                         }
                         Spacer()
                         Button("清空邮件云端数据", role: .destructive) {
-                            showConfirmClearNewsAlert = true
+                            activeAlert = .confirmClearNews
                         }
                         .controlSize(.small)
                     }
@@ -1009,7 +1033,7 @@ public struct SettingsView: View {
                     }
                     Spacer()
                     Button("清空本地数据", role: .destructive) {
-                        showConfirmClearAlert = true
+                        activeAlert = .confirmClearLocal
                     }
                     .controlSize(.small)
                 }
@@ -1031,12 +1055,31 @@ public struct SettingsView: View {
             
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Text("版本")
+                    Text("当前版本")
                         .font(.system(size: 12, weight: .medium))
                     Spacer()
-                    Text("1.0.0 (Build 2026.09)")
+                    Text("\(updateService.currentVersion) (Build \(updateService.currentBuild))")
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
+                    
+                    Button(action: {
+                        updateService.checkForUpdates(isUserInitiated: true)
+                        updateService.showUpdateSheet = true
+                    }) {
+                        HStack(spacing: 4) {
+                            if updateService.isChecking {
+                                ProgressView()
+                                    .controlSize(.mini)
+                            } else {
+                                Image(systemName: "arrow.triangle.2.circlepath")
+                                    .font(.system(size: 10.5))
+                            }
+                            Text("检查更新")
+                                .font(.system(size: 11, weight: .medium))
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
                 }
                 Divider()
                 HStack {

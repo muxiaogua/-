@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		35CC214E305266F300363CA7 /* RelaxKit in Frameworks */ = {isa = PBXBuildFile; productRef = 9B0000023046D00000000002 /* RelaxKit */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		35D997123046D244006E4C33 /* 团队工作台.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "团队工作台.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +27,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				35CC214E305266F300363CA7 /* RelaxKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -95,33 +100,18 @@
 			);
 			mainGroup = 35D997093046D244006E4C33;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				9B0000013046D00000000001 /* XCLocalSwiftPackageReference "../../Downloads/RelaxKit" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 35D997133046D244006E4C33 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
-			packageReferences = (
-				9B0000013046D00000000001 /* XCLocalSwiftPackageReference "../../Downloads/RelaxKit" */,
-			);
 			targets = (
 				35D997113046D244006E4C33 /* 团队工作台 */,
 			);
 		};
 /* End PBXProject section */
-
-/* Begin XCLocalSwiftPackageReference section */
-		9B0000013046D00000000001 /* XCLocalSwiftPackageReference "../../Downloads/RelaxKit" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = "../../Downloads/RelaxKit";
-		};
-/* End XCLocalSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		9B0000023046D00000000002 /* RelaxKit */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 9B0000013046D00000000001 /* XCLocalSwiftPackageReference "../../Downloads/RelaxKit" */;
-			productName = RelaxKit;
-		};
-/* End XCSwiftPackageProductDependency section */
 
 /* Begin PBXResourcesBuildPhase section */
 		35D997103046D244006E4C33 /* Resources */ = {
@@ -354,6 +344,21 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		9B0000013046D00000000001 /* XCLocalSwiftPackageReference "../../Downloads/RelaxKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../Downloads/RelaxKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		9B0000023046D00000000002 /* RelaxKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9B0000013046D00000000001 /* XCLocalSwiftPackageReference "../../Downloads/RelaxKit" */;
+			productName = RelaxKit;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 35D9970A3046D244006E4C33 /* Project object */;
 }
