@@ -21,11 +21,21 @@ public class MailSyncService: ObservableObject {
     public static let shared = MailSyncService()
     
     private let lastSyncTimeStorageKey = "workbench_last_mail_sync_date"
+    private let lastSyncedByStorageKey = "workbench_last_mail_synced_by"
     
     @Published public var isSyncing: Bool = false
     @Published public var lastSyncResult: String?
     @Published public var errorMessage: String?
     @Published public var needsPrivacySettingsGuide: Bool = false
+    @Published public var lastSyncedBy: String? {
+        didSet {
+            if let name = lastSyncedBy {
+                UserDefaults.standard.set(name, forKey: lastSyncedByStorageKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: lastSyncedByStorageKey)
+            }
+        }
+    }
     @Published public var lastSyncTime: Date? {
         didSet {
             if let date = lastSyncTime {
@@ -38,6 +48,7 @@ public class MailSyncService: ObservableObject {
     
     public init() {
         self.lastSyncTime = UserDefaults.standard.object(forKey: lastSyncTimeStorageKey) as? Date
+        self.lastSyncedBy = UserDefaults.standard.string(forKey: lastSyncedByStorageKey)
     }
     
     public func openAutomationPrivacySettings() {
@@ -434,8 +445,9 @@ public class MailSyncService: ObservableObject {
         tell application "Mail"
             set matchData to {}
             set targetSender1 to "ic_gc_aha_sacs@apple.com"
-            set targetKeyword1 to "Green Email - 近期重要内容"
-            set targetKeyword2 to "NJ Slack Support"
+            set targetKeyword1 to "Green Email"
+            set targetKeyword2 to "近期重要内容"
+            set targetKeywordSlack to "NJ Slack Support"
             
             -- Construct locale-independent date for cutoff
             set cutoffDate to (current date)
@@ -444,10 +456,10 @@ public class MailSyncService: ObservableObject {
             set day of cutoffDate to \(cutoffDay)
             set time of cutoffDate to \(cutoffTimeInSeconds)
             
-            -- 先限定在收件箱中优先极速查询
+            -- 先限定在收件箱中优先极速查询 (严格规则：仅接收合规 Green Email 或 NJ Slack Support)
             tell inbox
                 try
-                    set msgs to (messages whose (sender contains targetSender1 and (subject contains targetKeyword1 or subject contains targetKeyword2)) and date received ≥ cutoffDate)
+                    set msgs to (messages whose (sender contains targetSender1 and ((subject contains targetKeyword1 and subject contains targetKeyword2) or subject contains targetKeywordSlack)) and date received ≥ cutoffDate)
                     repeat with msg in msgs
                         set msgSender to sender of msg
                         set msgSubj to subject of msg
@@ -512,17 +524,17 @@ public class MailSyncService: ObservableObject {
                             try
                                 set mbName to name of mb
                                 if mbName is not "Trash" and mbName is not "Junk" and mbName is not "Drafts" and mbName is not "Sent Messages" and mbName is not "已删除" and mbName is not "已发送" and mbName is not "草稿" and mbName is not "垃圾邮件" then
-                                    set msgs to (messages of mb whose (sender contains targetSender1 and (subject contains targetKeyword1 or subject contains targetKeyword2)) and date received ≥ cutoffDate)
-                                    repeat with msg in msgs
-                                        set msgSender to sender of msg
-                                        set msgSubj to subject of msg
-                                        
-                                        set isSacsSender to (msgSender contains targetSender1)
-                                        set isGreenSubj to (msgSubj contains "Green Email" and msgSubj contains "近期重要内容")
-                                        set isSlackSubj to (msgSubj contains "NJ Slack Support")
-                                        set isSacsSubj to (isGreenSubj or isSlackSubj)
-                                        
-                                        if isSacsSender and isSacsSubj then
+                                     set msgs to (messages of mb whose (sender contains targetSender1 and ((subject contains targetKeyword1 and subject contains targetKeyword2) or subject contains targetKeywordSlack)) and date received ≥ cutoffDate)
+                                     repeat with msg in msgs
+                                         set msgSender to sender of msg
+                                         set msgSubj to subject of msg
+                                         
+                                         set isSacsSender to (msgSender contains targetSender1)
+                                         set isGreenSubj to (msgSubj contains "Green Email" and msgSubj contains "近期重要内容")
+                                         set isSlackSubj to (msgSubj contains "NJ Slack Support")
+                                         set isSacsSubj to (isGreenSubj or isSlackSubj)
+                                         
+                                         if isSacsSender and isSacsSubj then
                                             set isExcluded to false
                                             if msgSubj starts with "Re:" or msgSubj starts with "RE:" or msgSubj starts with "re:" or msgSubj starts with "re：" or msgSubj starts with "RE：" or msgSubj starts with "Re：" then
                                                 set isExcluded to true
@@ -679,11 +691,12 @@ public class MailSyncService: ObservableObject {
                     let lowerSender = sender.lowercased()
                     let isSacsSender = lowerSender.contains("ic_gc_aha_sacs@apple.com")
                     
-                    let isSlackSupport = isSacsSender && (rawTitle.contains("NJ Slack Support") || lowerTitle.contains("nj slack support"))
                     let isGreenEmail = isSacsSender && (lowerTitle.contains("green email") && lowerTitle.contains("近期重要内容"))
+                    let isSlackSupport = isSacsSender && (rawTitle.contains("NJ Slack Support") || lowerTitle.contains("nj slack support"))
                     
-                    // 重要邮件仅保留纯正的 Green Email 与 Slack Support，彻底排除 NPI 邮件
-                    guard isSlackSupport || isGreenEmail else {
+                    // 严格双重条件校验：必须为 ic_gc_aha_sacs@apple.com 发送，且属于 Green Email 或 NJ Slack Support
+                    // 彻底排除 Carpe Facto、协议规程更新等规则外邮件
+                    guard isGreenEmail || isSlackSupport else {
                         continue
                     }
                     
@@ -693,7 +706,7 @@ public class MailSyncService: ObservableObject {
                     var extractedHTML: String? = nil
                     var parsedRawHTML: String? = nil
                     
-                    // 1. 优先使用 AppleScript 原生获取的完整 htmlContent（绝无系统字符切片截断风险）
+                    // 1. 优先使用 AppleScript 原生获取的完整 htmlContent
                     if !appleScriptHTML.isEmpty {
                         parsedRawHTML = appleScriptHTML
                         extractedHTML = isSlackSupport ? nil : Self.cleanGreenEmailHTMLContent(appleScriptHTML)
@@ -701,7 +714,7 @@ public class MailSyncService: ObservableObject {
                     
                     // 2. 如果邮件包含 CID 图片，用 rawMIMESource 中的附件将 HTML 内的图片无感替换为 Base64
                     if !rawMIMESource.isEmpty {
-                        if let parsed = MIMEHTMLParser.extractHTML(from: rawMIMESource) {
+                        if let parsed = MIMEHTMLParser.extractHTML(from: rawMIMESource, fallbackPlainText: rawPlain) {
                             if parsed.contains("<img") || parsed.contains("data:image") || extractedHTML == nil {
                                 parsedRawHTML = parsed
                                 extractedHTML = isSlackSupport ? nil : Self.cleanGreenEmailHTMLContent(parsed)
@@ -713,9 +726,7 @@ public class MailSyncService: ObservableObject {
                     let cleanTitle = Self.cleanGreenEmailTitle(rawTitle, isSlackSupport: isSlackSupport)
                     let cleanedPlain: String
                     if isSlackSupport {
-                        // For Slack Support, strictly require at least one valid Records entry
                         guard let recordsMarkdown = Self.parseAndFormatSlackSupportContent(plainText: rawPlain, htmlContent: parsedRawHTML) else {
-                            // Skip this email if it contains no Records / FAQ table
                             continue
                         }
                         cleanedPlain = recordsMarkdown
@@ -779,10 +790,15 @@ public class MailSyncService: ObservableObject {
                     self?.isSyncing = false
                     let now = Date()
                     self?.lastSyncTime = now
+                    self?.lastSyncedBy = store.currentUser.name
                     
-                    // Prune Green Email messages older than 1 year, and clean up any Slack Support items without Records
+                    // 严格双重规则自清洁：彻底剔除既非合规 Green Email 亦非合规 Slack Support 的规则外邮件（如 Carpe Facto、协议规程更新等）
                     store.newsArticles.removeAll { article in
-                        if article.category == .greenEmail && article.publishDate < oneYearAgo {
+                        let lower = article.title.lowercased()
+                        if lower.contains("carpe facto") || lower.contains("针对协议相关的规程更新") {
+                            return true
+                        }
+                        if article.publishDate < oneYearAgo {
                             return true
                         }
                         if article.category == .slackSupport && !article.content.contains("|") {

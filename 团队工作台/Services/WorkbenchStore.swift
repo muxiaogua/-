@@ -5,6 +5,7 @@
 
 import Foundation
 import AppKit
+import SwiftUI
 import Combine
 
 @MainActor
@@ -34,6 +35,28 @@ public class WorkbenchStore: ObservableObject {
     @Published public var priceSyncErrorMessage: String? = nil
     @Published public var lastPriceSyncTime: Date? = nil
     
+    // NPI 邮件合集 (NPI Emails Collection)
+    @Published public var npiEmails: [NewsArticle] = []
+    @Published public var selectedNpiEmailID: UUID?
+    @Published public var readNpiEmailIDs: Set<UUID> = []
+    
+    // 共享知识库 (Shared Knowledge Base)
+    @Published public var knowledgeArticles: [SharedKnowledgeArticle] = []
+    @Published public var selectedKnowledgeArticleID: UUID?
+    @Published public var bookmarkedKnowledgeIDs: Set<UUID> = []
+    
+    // 一键总同步状态与时间
+    @Published public var isMasterSyncing: Bool = false
+    @Published public var masterSyncResult: MasterSyncResult?
+    @Published public var lastMasterSyncTime: Date?
+    @Published public var lastMasterSyncedBy: String?
+    
+    private let lastMasterSyncTimeKey = "workbench_last_master_sync_time"
+    private let lastMasterSyncedByKey = "workbench_last_master_synced_by"
+    
+    private let knowledgeStorageKey = "workbench_shared_knowledge_v1"
+    private let bookmarkedKnowledgeStorageKey = "workbench_bookmarked_knowledge_ids_v1"
+    
     private let announcementsStorageKey = "workbench_announcements_v3"
     private let newsStorageKey = "workbench_news_v3"
     private let faqStorageKey = "workbench_faq_v3"
@@ -46,6 +69,8 @@ public class WorkbenchStore: ObservableObject {
     private let devicePricesStorageKey = "workbench_device_prices_v1"
     private let priceApiUrlStorageKey = "workbench_price_api_url_v1"
     private let lastPriceSyncTimeStorageKey = "workbench_last_price_sync_time_v1"
+    private let npiEmailsStorageKey = "workbench_npi_emails_v1"
+    private let readNpiEmailStorageKey = "workbench_read_npi_email_ids_v1"
     
     public init() {
         loadData()
@@ -126,6 +151,10 @@ public class WorkbenchStore: ObservableObject {
         newsArticles.filter { !readNewsArticleIDs.contains($0.id) }.count
     }
     
+    public var unreadNpiEmailsCount: Int {
+        npiEmails.filter { !readNpiEmailIDs.contains($0.id) }.count
+    }
+    
     public var todayUnreadNewsCount: Int {
         newsArticles.filter { article in
             Calendar.current.isDateInToday(article.publishDate) && !readNewsArticleIDs.contains(article.id)
@@ -183,6 +212,10 @@ public class WorkbenchStore: ObservableObject {
         permission(for: currentUser.name).isAdmin
     }
     
+    public var isCurrentUserSuperAdmin: Bool {
+        isDefaultAdmin(name: currentUser.name)
+    }
+    
     public var canCurrentUserPublishAnnouncements: Bool {
         let perm = permission(for: currentUser.name)
         return perm.isAdmin || perm.canPublishAnnouncements
@@ -191,6 +224,54 @@ public class WorkbenchStore: ObservableObject {
     public var canCurrentUserSyncData: Bool {
         let perm = permission(for: currentUser.name)
         return perm.isAdmin || perm.canSyncData
+    }
+    
+    /// 全局综合最新更新时间与更新人（优先取总同步记录，次取各子模块最新记录）
+    public var latestUpdateDisplayInfo: (time: Date, by: String)? {
+        if let t = lastMasterSyncTime {
+            return (t, lastMasterSyncedBy ?? "")
+        }
+        var candidates: [(Date, String)] = []
+        if let t = MailSyncService.shared.lastSyncTime {
+            candidates.append((t, MailSyncService.shared.lastSyncedBy ?? ""))
+        }
+        if let t = NPIMailSyncService.shared.lastSyncTime {
+            candidates.append((t, NPIMailSyncService.shared.lastSyncedBy ?? ""))
+        }
+        if let t = ChorusFAQSyncService.shared.lastSyncTime {
+            candidates.append((t, ChorusFAQSyncService.shared.lastSyncedBy ?? ""))
+        }
+        if let best = candidates.max(by: { $0.0 < $1.0 }) {
+            return (best.0, best.1)
+        }
+        if let t = SharedFolderSyncService.shared.lastSyncDate {
+            return (t, "")
+        }
+        return nil
+    }
+    
+    public func formatLatestSyncTime(_ date: Date, syncedBy: String) -> String {
+        let cal = Calendar.current
+        let timeFormatter = DateFormatter()
+        let timePart: String
+        if cal.isDateInToday(date) {
+            timeFormatter.dateFormat = "HH:mm"
+            timePart = timeFormatter.string(from: date)
+        } else {
+            timeFormatter.dateFormat = "MM-dd HH:mm"
+            timePart = timeFormatter.string(from: date)
+        }
+        if syncedBy.isEmpty {
+            return "最近更新: \(timePart)"
+        } else {
+            return "最近更新: \(timePart) (\(syncedBy))"
+        }
+    }
+    
+    public func formatFullDateTime(_ date: Date) -> String {
+        let df = DateFormatter()
+        df.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        return df.string(from: date)
     }
     
     public func updatePermission(
@@ -315,6 +396,140 @@ public class WorkbenchStore: ObservableObject {
         }
         let array = readNewsArticleIDs.map { $0.uuidString }
         UserDefaults.standard.set(array, forKey: readNewsStorageKey)
+    }
+    
+    public func markNpiEmailAsRead(id: UUID) {
+        if !readNpiEmailIDs.contains(id) {
+            readNpiEmailIDs.insert(id)
+            let array = readNpiEmailIDs.map { $0.uuidString }
+            UserDefaults.standard.set(array, forKey: readNpiEmailStorageKey)
+        }
+    }
+    
+    public func markAllNpiEmailsAsRead() {
+        for email in npiEmails {
+            readNpiEmailIDs.insert(email.id)
+        }
+        let array = readNpiEmailIDs.map { $0.uuidString }
+        UserDefaults.standard.set(array, forKey: readNpiEmailStorageKey)
+    }
+    
+    public func toggleNpiEmailBookmark(id: UUID) {
+        if let index = npiEmails.firstIndex(where: { $0.id == id }) {
+            npiEmails[index].isBookmarked.toggle()
+            saveNpiEmails()
+        }
+    }
+    
+    public func saveNpiEmails() {
+        if let encoded = try? JSONEncoder().encode(npiEmails) {
+            UserDefaults.standard.set(encoded, forKey: npiEmailsStorageKey)
+        }
+        if let baseURL = SharedFolderSyncService.shared.sharedFolderURL, SharedFolderSyncService.shared.isConnected {
+            let npiDir = baseURL.appendingPathComponent("npi_emails", isDirectory: true)
+            try? FileManager.default.createDirectory(at: npiDir, withIntermediateDirectories: true)
+            let encoder = JSONEncoder()
+            for item in npiEmails {
+                let fileURL = npiDir.appendingPathComponent("email_\(item.id.uuidString).json")
+                if let data = try? encoder.encode(item) {
+                    try? data.write(to: fileURL)
+                }
+            }
+        }
+    }
+    
+    // MARK: - Actions: 共享知识库 (Shared Knowledge Base)
+    
+    public func saveKnowledgeArticles() {
+        if let encoded = try? JSONEncoder().encode(knowledgeArticles) {
+            UserDefaults.standard.set(encoded, forKey: knowledgeStorageKey)
+        }
+        if let baseURL = SharedFolderSyncService.shared.sharedFolderURL, SharedFolderSyncService.shared.isConnected {
+            let articlesToSave = self.knowledgeArticles
+            DispatchQueue.global(qos: .utility).async {
+                let knowledgeDir = baseURL.appendingPathComponent("shared_knowledge", isDirectory: true)
+                try? FileManager.default.createDirectory(at: knowledgeDir, withIntermediateDirectories: true)
+                let encoder = JSONEncoder()
+                for article in articlesToSave {
+                    let fileURL = knowledgeDir.appendingPathComponent("knowledge_\(article.id.uuidString).json")
+                    if let data = try? encoder.encode(article) {
+                        try? data.write(to: fileURL)
+                    }
+                }
+            }
+        }
+        self.objectWillChange.send()
+    }
+    
+    public func addKnowledgeArticle(_ article: SharedKnowledgeArticle) {
+        knowledgeArticles.insert(article, at: 0)
+        saveKnowledgeArticles()
+    }
+    
+    public func updateKnowledgeArticle(_ article: SharedKnowledgeArticle) {
+        if let idx = knowledgeArticles.firstIndex(where: { $0.id == article.id }) {
+            var updated = article
+            updated.updatedAt = Date()
+            knowledgeArticles[idx] = updated
+            saveKnowledgeArticles()
+        }
+    }
+    
+    public func deleteKnowledgeArticle(id: UUID) {
+        knowledgeArticles.removeAll { $0.id == id }
+        bookmarkedKnowledgeIDs.remove(id)
+        let array = bookmarkedKnowledgeIDs.map { $0.uuidString }
+        UserDefaults.standard.set(array, forKey: bookmarkedKnowledgeStorageKey)
+        
+        saveKnowledgeArticles()
+        
+        if let baseURL = SharedFolderSyncService.shared.sharedFolderURL, SharedFolderSyncService.shared.isConnected {
+            DispatchQueue.global(qos: .utility).async {
+                let fileURL = baseURL.appendingPathComponent("shared_knowledge/knowledge_\(id.uuidString).json")
+                try? FileManager.default.removeItem(at: fileURL)
+            }
+        }
+    }
+    
+    public func toggleKnowledgeHelpful(id: UUID) {
+        if let idx = knowledgeArticles.firstIndex(where: { $0.id == id }) {
+            let userName = currentUser.name
+            if knowledgeArticles[idx].helpfulUserNames.contains(userName) {
+                knowledgeArticles[idx].helpfulUserNames.removeAll { $0 == userName }
+            } else {
+                knowledgeArticles[idx].helpfulUserNames.append(userName)
+            }
+            saveKnowledgeArticles()
+        }
+    }
+    
+    public func toggleKnowledgeBookmark(id: UUID) {
+        if bookmarkedKnowledgeIDs.contains(id) {
+            bookmarkedKnowledgeIDs.remove(id)
+        } else {
+            bookmarkedKnowledgeIDs.insert(id)
+        }
+        let array = bookmarkedKnowledgeIDs.map { $0.uuidString }
+        UserDefaults.standard.set(array, forKey: bookmarkedKnowledgeStorageKey)
+        self.objectWillChange.send()
+    }
+    
+    public func toggleKnowledgePin(id: UUID) {
+        guard canCurrentUserPublishAnnouncements || isCurrentUserAdmin else { return }
+        if let idx = knowledgeArticles.firstIndex(where: { $0.id == id }) {
+            knowledgeArticles[idx].isPinned.toggle()
+            saveKnowledgeArticles()
+        }
+    }
+    
+    public func addKnowledgeComment(articleID: UUID, content: String) {
+        let clean = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty else { return }
+        if let idx = knowledgeArticles.firstIndex(where: { $0.id == articleID }) {
+            let comment = KnowledgeComment(author: currentUser.name, content: clean)
+            knowledgeArticles[idx].comments.append(comment)
+            saveKnowledgeArticles()
+        }
     }
     
     public func markAnnouncementAsRead(id: UUID) {
@@ -666,8 +881,9 @@ public class WorkbenchStore: ObservableObject {
     public func updateCurrentUser(name: String, avatarSymbol: String) {
         let oldName = self.currentUser.name.trimmingCharacters(in: .whitespaces)
         let newName = name.trimmingCharacters(in: .whitespaces)
-        self.currentUser.name = newName
-        self.currentUser.avatarSymbol = avatarSymbol
+        
+        objectWillChange.send()
+        self.currentUser = TeamMember(id: self.currentUser.id, name: newName, avatarSymbol: avatarSymbol)
         
         if !oldName.isEmpty && oldName != newName {
             migrateAuthor(from: oldName, to: newName)
@@ -679,6 +895,8 @@ public class WorkbenchStore: ObservableObject {
     
     public func migrateAuthor(from oldName: String, to newName: String) {
         guard !oldName.isEmpty && !newName.isEmpty && oldName != newName else { return }
+        // 切勿在切换测试身份（如 TestUser）时迁移历史真实成员签名
+        guard oldName != "TestUser" && newName != "TestUser" else { return }
         
         // 1. Migrate announcements author & signatures
         for i in 0..<announcements.count {
@@ -690,6 +908,18 @@ public class WorkbenchStore: ObservableObject {
                     announcements[i].acknowledgments[j].memberName = newName
                 }
             }
+            // 确保签名绝无重复人员
+            var uniqueMap: [String: AnnouncementAcknowledgment] = [:]
+            for ack in announcements[i].acknowledgments {
+                let name = ack.memberName.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !name.isEmpty else { continue }
+                if let ex = uniqueMap[name] {
+                    if ack.acknowledgedAt > ex.acknowledgedAt { uniqueMap[name] = ack }
+                } else {
+                    uniqueMap[name] = ack
+                }
+            }
+            announcements[i].acknowledgments = Array(uniqueMap.values).sorted { $0.acknowledgedAt < $1.acknowledgedAt }
         }
         
         // 2. Migrate news comments
@@ -775,7 +1005,9 @@ public class WorkbenchStore: ObservableObject {
         UserDefaults.standard.removeObject(forKey: "workbench_news_v1")
         UserDefaults.standard.removeObject(forKey: "workbench_news_v2")
         UserDefaults.standard.removeObject(forKey: "workbench_last_mail_sync_date")
+        UserDefaults.standard.removeObject(forKey: "workbench_last_mail_synced_by")
         MailSyncService.shared.lastSyncTime = nil
+        MailSyncService.shared.lastSyncedBy = nil
         
         // Remove news files and sync_meta from shared folder if connected
         if let baseURL = SharedFolderSyncService.shared.sharedFolderURL, SharedFolderSyncService.shared.isConnected {
@@ -787,25 +1019,43 @@ public class WorkbenchStore: ObservableObject {
             }
         }
         saveData()
+        self.objectWillChange.send()
     }
     
     // MARK: - 清空本地数据（所有成员可用，不影响他人与云端共享数据）
     public func clearAllLocalData() {
         announcements.removeAll()
         newsArticles.removeAll()
+        npiEmails.removeAll()
         faqItems.removeAll()
+        knowledgeArticles.removeAll()
+        bookmarkedKnowledgeIDs.removeAll()
         readNewsArticleIDs.removeAll()
         readAnnouncementIDs.removeAll()
+        readNpiEmailIDs.removeAll()
         currentMemberShiftSchedule = MemberShiftSchedule(memberName: currentUser.name, updatedAt: Date(), days: [])
         
         UserDefaults.standard.removeObject(forKey: announcementsStorageKey)
         UserDefaults.standard.removeObject(forKey: newsStorageKey)
+        UserDefaults.standard.removeObject(forKey: npiEmailsStorageKey)
         UserDefaults.standard.removeObject(forKey: faqStorageKey)
+        UserDefaults.standard.removeObject(forKey: knowledgeStorageKey)
+        UserDefaults.standard.removeObject(forKey: bookmarkedKnowledgeStorageKey)
         UserDefaults.standard.removeObject(forKey: readNewsStorageKey)
         UserDefaults.standard.removeObject(forKey: readAnnouncementsStorageKey)
+        UserDefaults.standard.removeObject(forKey: readNpiEmailStorageKey)
         UserDefaults.standard.removeObject(forKey: shiftsStorageKeyPrefix + currentUser.name)
         UserDefaults.standard.removeObject(forKey: "workbench_announcements_v1")
         UserDefaults.standard.removeObject(forKey: "workbench_news_v1")
+        UserDefaults.standard.removeObject(forKey: "workbench_last_mail_sync_date")
+        UserDefaults.standard.removeObject(forKey: "workbench_last_mail_synced_by")
+        UserDefaults.standard.removeObject(forKey: "workbench_last_npi_mail_sync_date")
+        UserDefaults.standard.removeObject(forKey: "workbench_last_npi_mail_synced_by")
+        
+        MailSyncService.shared.lastSyncTime = nil
+        MailSyncService.shared.lastSyncedBy = nil
+        NPIMailSyncService.shared.lastSyncTime = nil
+        NPIMailSyncService.shared.lastSyncedBy = nil
         
         // 仅在本地持久化层写入空数据，严禁删除云端共享文件夹的文件
         if let encodedAnnouncements = try? JSONEncoder().encode(announcements) {
@@ -813,6 +1063,9 @@ public class WorkbenchStore: ObservableObject {
         }
         if let encodedNews = try? JSONEncoder().encode(newsArticles) {
             UserDefaults.standard.set(encodedNews, forKey: newsStorageKey)
+        }
+        if let encodedNpi = try? JSONEncoder().encode(npiEmails) {
+            UserDefaults.standard.set(encodedNpi, forKey: npiEmailsStorageKey)
         }
         if let encodedFaqs = try? JSONEncoder().encode(faqItems) {
             UserDefaults.standard.set(encodedFaqs, forKey: faqStorageKey)
@@ -874,6 +1127,9 @@ public class WorkbenchStore: ObservableObject {
         if let encodedPrices = try? JSONEncoder().encode(devicePrices) {
             UserDefaults.standard.set(encodedPrices, forKey: devicePricesStorageKey)
         }
+        if let encodedKnowledge = try? JSONEncoder().encode(knowledgeArticles) {
+            UserDefaults.standard.set(encodedKnowledge, forKey: knowledgeStorageKey)
+        }
         UserDefaults.standard.set(priceApiUrl, forKey: priceApiUrlStorageKey)
         if let lastSync = lastPriceSyncTime {
             UserDefaults.standard.set(lastSync.timeIntervalSince1970, forKey: lastPriceSyncTimeStorageKey)
@@ -886,6 +1142,7 @@ public class WorkbenchStore: ObservableObject {
             let currentFaq = self.faqItems
             let currentUsr = self.currentUser
             let currentPerm = self.permissionConfig
+            let currentKnowledge = self.knowledgeArticles
             
             DispatchQueue.global(qos: .utility).async {
                 let encoder = JSONEncoder()
@@ -934,6 +1191,16 @@ public class WorkbenchStore: ObservableObject {
                 let permURL = permDir.appendingPathComponent("permissions.json")
                 if let data = try? encoder.encode(currentPerm) {
                     try? data.write(to: permURL)
+                }
+                
+                // Write shared knowledge articles
+                let knowledgeDir = baseURL.appendingPathComponent("shared_knowledge", isDirectory: true)
+                try? FileManager.default.createDirectory(at: knowledgeDir, withIntermediateDirectories: true)
+                for article in currentKnowledge {
+                    let fileURL = knowledgeDir.appendingPathComponent("knowledge_\(article.id.uuidString).json")
+                    if let data = try? encoder.encode(article) {
+                        try? data.write(to: fileURL)
+                    }
                 }
             }
         }
@@ -1002,20 +1269,32 @@ public class WorkbenchStore: ObservableObject {
             
             for i in 0..<loadedAnnouncements.count {
                 let annId = loadedAnnouncements[i].id
+                var allAcks = loadedAnnouncements[i].acknowledgments
                 if let acks = ackMap[annId] {
-                    var existingAcks = loadedAnnouncements[i].acknowledgments
-                    for ack in acks {
-                        if !existingAcks.contains(where: { $0.memberName == ack.memberName }) {
-                            existingAcks.append(ack)
-                        }
-                    }
-                    loadedAnnouncements[i].acknowledgments = existingAcks
+                    allAcks.append(contentsOf: acks)
                 }
+                
+                // 严格去重：每个成员在单条公告中最多且仅有一条已读确认记录
+                var uniqueMap: [String: AnnouncementAcknowledgment] = [:]
+                for ack in allAcks {
+                    let name = ack.memberName.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !name.isEmpty, !Self.mockNamesBlocklist.contains(name), name != "TestUser" else { continue }
+                    if let ex = uniqueMap[name] {
+                        if ack.acknowledgedAt > ex.acknowledgedAt {
+                            uniqueMap[name] = ack
+                        }
+                    } else {
+                        uniqueMap[name] = ack
+                    }
+                }
+                loadedAnnouncements[i].acknowledgments = Array(uniqueMap.values).sorted { $0.acknowledgedAt < $1.acknowledgedAt }
                 
                 let userAck = loadedAnnouncements[i].acknowledgments.first(where: { $0.memberName == currentUserName })
                 if let uAck = userAck {
                     loadedAnnouncements[i].isAcknowledged = true
                     loadedAnnouncements[i].acknowledgedAt = uAck.acknowledgedAt
+                } else {
+                    loadedAnnouncements[i].isAcknowledged = false
                 }
             }
             
@@ -1025,6 +1304,8 @@ public class WorkbenchStore: ObservableObject {
                 }
                 return first.publishDate > second.publishDate
             }
+            
+            let oneYearAgo = Calendar.current.date(byAdding: .year, value: -1, to: Date()) ?? Date().addingTimeInterval(-365 * 86400)
             
             // 3. Read Green Email & News Articles
             let newsDir = baseURL.appendingPathComponent("news", isDirectory: true)
@@ -1036,7 +1317,7 @@ public class WorkbenchStore: ObservableObject {
                         let lowerTitle = article.title.lowercased()
                         let isTestMail = lowerTitle.contains("(test)") || lowerTitle.contains("[test]") || lowerTitle.contains(" test ") || lowerTitle.hasPrefix("test") || lowerTitle.contains("测试") || lowerTitle.contains("(practice)") || lowerTitle.contains("[practice]") || lowerTitle.contains("practice") || lowerTitle.contains("演练")
                         
-                        if (article.category == .slackSupport && !article.content.contains("|")) || isTestMail {
+                        if isTestMail || article.publishDate < oneYearAgo {
                             try? fileManager.removeItem(at: file)
                         } else {
                             loadedNews.append(article)
@@ -1045,8 +1326,8 @@ public class WorkbenchStore: ObservableObject {
                 }
             }
             
-            var mergedNews = currentArticles
-            for newArt in loadedNews {
+            var mergedNews = currentArticles.filter { $0.publishDate >= oneYearAgo }
+            for newArt in loadedNews where newArt.publishDate >= oneYearAgo {
                 if let existingIdx = mergedNews.firstIndex(where: { $0.title == newArt.title || $0.id == newArt.id }) {
                     mergedNews[existingIdx] = newArt
                 } else {
@@ -1135,15 +1416,127 @@ public class WorkbenchStore: ObservableObject {
             }
             let sortedTeamShifts = loadedTeamShifts.sorted { $0.memberName < $1.memberName }
             
+            // 9. Read NPI Emails
+            let npiDir = baseURL.appendingPathComponent("npi_emails", isDirectory: true)
+            var loadedNpiEmails: [NewsArticle] = []
+            if let files = try? fileManager.contentsOfDirectory(at: npiDir, includingPropertiesForKeys: nil) {
+                for file in files where file.pathExtension == "json" {
+                    if let data = try? Data(contentsOf: file),
+                       let article = try? decoder.decode(NewsArticle.self, from: data) {
+                        let isSenderMatch = article.source.lowercased().contains("fy26_gc_npicomms@apple.com")
+                        let isTitleMatch = article.title.contains("🔥") && (article.title.contains("[FY26 GC NPI]") || article.title.lowercased().contains("fy26 gc npi"))
+                        let isTest = article.title.contains("[TEST NPI]") || article.title.contains("联调测试")
+                        if isTest {
+                            try? fileManager.removeItem(at: file)
+                        } else if isSenderMatch && isTitleMatch && article.publishDate >= oneYearAgo {
+                            loadedNpiEmails.append(article)
+                        } else {
+                            try? fileManager.removeItem(at: file)
+                        }
+                    }
+                }
+            }
+            
+            // 10. Read Sync Meta for Important Emails, NPI Emails and FAQ
+            let newsMetaURL = baseURL.appendingPathComponent("news/sync_meta.json")
+            var loadedNewsMeta: SyncMetaRecord? = nil
+            if let data = try? Data(contentsOf: newsMetaURL),
+               let meta = try? decoder.decode(SyncMetaRecord.self, from: data) {
+                loadedNewsMeta = meta
+            }
+            
+            let npiMetaURL = baseURL.appendingPathComponent("npi_emails/sync_meta.json")
+            var loadedNpiMeta: SyncMetaRecord? = nil
+            if let data = try? Data(contentsOf: npiMetaURL),
+               let meta = try? decoder.decode(SyncMetaRecord.self, from: data) {
+                loadedNpiMeta = meta
+            }
+            
+            let faqMetaURL = baseURL.appendingPathComponent("faq/sync_meta.json")
+            var loadedFaqMeta: SyncMetaRecord? = nil
+            if let data = try? Data(contentsOf: faqMetaURL),
+               let meta = try? decoder.decode(SyncMetaRecord.self, from: data) {
+                loadedFaqMeta = meta
+            }
+            
+            let masterMetaURL = baseURL.appendingPathComponent("master_sync_meta.json")
+            var loadedMasterMeta: SyncMetaRecord? = nil
+            if let data = try? Data(contentsOf: masterMetaURL),
+               let meta = try? decoder.decode(SyncMetaRecord.self, from: data) {
+                loadedMasterMeta = meta
+            }
+            
+            // 12. Read Shared Knowledge Base
+            let kDir = baseURL.appendingPathComponent("shared_knowledge", isDirectory: true)
+            var loadedKnowledge: [SharedKnowledgeArticle] = []
+            if let files = try? fileManager.contentsOfDirectory(at: kDir, includingPropertiesForKeys: nil) {
+                for file in files where file.pathExtension == "json" {
+                    if let data = try? Data(contentsOf: file),
+                       let article = try? decoder.decode(SharedKnowledgeArticle.self, from: data) {
+                        loadedKnowledge.append(article)
+                    }
+                }
+            }
+            
             // 回到主线程单次原子性刷新 UI，彻底消灭界面阻塞
             DispatchQueue.main.async {
                 guard let self = self else { return }
+                
+                if let meta = loadedMasterMeta {
+                    if self.lastMasterSyncTime == nil || meta.lastSyncTime >= (self.lastMasterSyncTime ?? .distantPast) {
+                        self.lastMasterSyncTime = meta.lastSyncTime
+                        self.lastMasterSyncedBy = meta.syncedBy
+                    }
+                }
+                
+                if let meta = loadedNewsMeta {
+                    if MailSyncService.shared.lastSyncTime == nil || meta.lastSyncTime >= (MailSyncService.shared.lastSyncTime ?? .distantPast) {
+                        MailSyncService.shared.lastSyncTime = meta.lastSyncTime
+                        MailSyncService.shared.lastSyncedBy = meta.syncedBy
+                    }
+                }
+                if let meta = loadedNpiMeta {
+                    if NPIMailSyncService.shared.lastSyncTime == nil || meta.lastSyncTime >= (NPIMailSyncService.shared.lastSyncTime ?? .distantPast) {
+                        NPIMailSyncService.shared.lastSyncTime = meta.lastSyncTime
+                        NPIMailSyncService.shared.lastSyncedBy = meta.syncedBy
+                    }
+                }
+                if let meta = loadedFaqMeta {
+                    if ChorusFAQSyncService.shared.lastSyncTime == nil || meta.lastSyncTime >= (ChorusFAQSyncService.shared.lastSyncTime ?? .distantPast) {
+                        ChorusFAQSyncService.shared.lastSyncTime = meta.lastSyncTime
+                        ChorusFAQSyncService.shared.lastSyncedBy = meta.syncedBy
+                    }
+                }
+                SharedFolderSyncService.shared.lastSyncDate = Date()
                 
                 if !sortedAnnouncements.isEmpty {
                     self.announcements = sortedAnnouncements
                 }
                 if !sortedNews.isEmpty {
                     self.newsArticles = sortedNews
+                }
+                if !loadedNpiEmails.isEmpty {
+                    var merged = self.npiEmails.filter { $0.publishDate >= oneYearAgo }
+                    for email in loadedNpiEmails {
+                        if let idx = merged.firstIndex(where: {
+                            if let idA = $0.originalURL, let idB = email.originalURL, !idA.isEmpty && !idB.isEmpty {
+                                if idA == idB { return true }
+                            }
+                            if $0.title == email.title && Calendar.current.isDate($0.publishDate, inSameDayAs: email.publishDate) {
+                                let sA = $0.summary.trimmingCharacters(in: .whitespacesAndNewlines)
+                                let sB = email.summary.trimmingCharacters(in: .whitespacesAndNewlines)
+                                if !sA.isEmpty && !sB.isEmpty && (sA == sB || sA.hasPrefix(sB.prefix(60)) || sB.hasPrefix(sA.prefix(60))) {
+                                    return true
+                                }
+                            }
+                            return false
+                        }) {
+                            merged[idx] = email
+                        } else {
+                            merged.append(email)
+                        }
+                    }
+                    self.npiEmails = merged.sorted { $0.publishDate > $1.publishDate }
                 }
                 for sharedComment in commentsToMerge {
                     if let idx = self.newsArticles.firstIndex(where: { $0.id == sharedComment.articleId }) {
@@ -1164,6 +1557,21 @@ public class WorkbenchStore: ObservableObject {
                 }
                 self.teamShiftSchedules = sortedTeamShifts
                 
+                if !loadedKnowledge.isEmpty {
+                    var mergedK = self.knowledgeArticles
+                    for article in loadedKnowledge {
+                        if let idx = mergedK.firstIndex(where: { $0.id == article.id }) {
+                            mergedK[idx] = article
+                        } else {
+                            mergedK.append(article)
+                        }
+                    }
+                    self.knowledgeArticles = mergedK.sorted {
+                        if $0.isPinned != $1.isPinned { return $0.isPinned && !$1.isPinned }
+                        return $0.createdAt > $1.createdAt
+                    }
+                }
+                
                 self.isSharedFolderLoading = false
                 self.objectWillChange.send()
             }
@@ -1177,6 +1585,70 @@ public class WorkbenchStore: ObservableObject {
             SharedFolderSyncService.shared.lastSyncDate = Date()
             SharedFolderSyncService.shared.syncMessage = "全员数据云端双向同步完成"
         }
+    }
+    
+    /// 一键检查并全面同步所有版块（重要邮件、NPI 重点邮件、Chorus 问答知识库、Apple 官网价格、团队共享双向对齐）
+    @MainActor
+    public func performMasterSync() async {
+        guard !isMasterSyncing else { return }
+        isMasterSyncing = true
+        defer { isMasterSyncing = false }
+        
+        var greenNewCount = 0
+        var npiNewCount = 0
+        var faqCount = 0
+        var priceDiffCount = 0
+        
+        if canCurrentUserSyncData {
+            // 1. 检查重要邮件 (Green Email + Slack Support)
+            greenNewCount = await MailSyncService.shared.syncGreenEmailsFromMail(into: self)
+            
+            // 2. 检查 NPI 重点邮件
+            npiNewCount = await NPIMailSyncService.shared.syncNPIMailsFromMail(into: self)
+            
+            // 3. 校验并更新 Chorus 知识库全量问答 (含 RCC FAQ_NPI 专项)
+            faqCount = ChorusFAQSyncService.shared.syncChorusAll(into: self)
+            _ = ChorusFAQSyncService.shared.syncChorusCategory("RCC FAQ_NPI", into: self)
+            
+            // 4. 联网检查 Apple 官网最新维修价格及机型
+            let priceResult = await AppleOfficialPricingData.shared.fetchLatestFromOfficialWebsite()
+            if case .success(let diff) = priceResult {
+                priceDiffCount = diff
+            }
+        }
+        
+        // 5. 检查并双向对齐团队共享文件夹 (公告/排班/花名册/权限/确认/评论)
+        forceSyncAllWithSharedFolder()
+        
+        // 6. 汇总结果
+        let now = Date()
+        self.lastMasterSyncTime = now
+        self.lastMasterSyncedBy = currentUser.name
+        UserDefaults.standard.set(now, forKey: lastMasterSyncTimeKey)
+        UserDefaults.standard.set(currentUser.name, forKey: lastMasterSyncedByKey)
+        
+        if let baseURL = SharedFolderSyncService.shared.sharedFolderURL, SharedFolderSyncService.shared.isConnected {
+            DispatchQueue.global(qos: .utility).async {
+                let metaURL = baseURL.appendingPathComponent("master_sync_meta.json")
+                let meta = SyncMetaRecord(lastSyncTime: now, syncedBy: self.currentUser.name)
+                if let data = try? JSONEncoder().encode(meta) {
+                    try? data.write(to: metaURL)
+                }
+            }
+        }
+        
+        let result = MasterSyncResult(
+            greenEmailCount: newsArticles.count,
+            greenEmailNew: greenNewCount,
+            npiEmailCount: npiEmails.count,
+            npiEmailNew: npiNewCount,
+            faqCount: faqItems.count,
+            priceDiffCount: priceDiffCount,
+            syncedBy: currentUser.name,
+            timestamp: now
+        )
+        self.masterSyncResult = result
+        NotificationCenter.default.post(name: .masterSyncDidComplete, object: nil)
     }
     
     public func loadData() {
@@ -1211,8 +1683,44 @@ public class WorkbenchStore: ObservableObject {
         let readNewsData = UserDefaults.standard.stringArray(forKey: readNewsStorageKey) ?? []
         self.readNewsArticleIDs = Set(readNewsData.compactMap { UUID(uuidString: $0) })
         
+        let readNpiData = UserDefaults.standard.stringArray(forKey: readNpiEmailStorageKey) ?? []
+        self.readNpiEmailIDs = Set(readNpiData.compactMap { UUID(uuidString: $0) })
+        
         let readAnnData = UserDefaults.standard.stringArray(forKey: readAnnouncementsStorageKey) ?? []
         self.readAnnouncementIDs = Set(readAnnData.compactMap { UUID(uuidString: $0) })
+        
+        let npiData = UserDefaults.standard.data(forKey: npiEmailsStorageKey)
+        if let data = npiData, let decoded = try? JSONDecoder().decode([NewsArticle].self, from: data) {
+            let oneYearAgo = Calendar.current.date(byAdding: .year, value: -1, to: Date()) ?? Date().addingTimeInterval(-365 * 86400)
+            let filtered = decoded.filter {
+                !$0.title.contains("[TEST NPI]") &&
+                !$0.title.contains("联调测试") &&
+                $0.publishDate >= oneYearAgo &&
+                $0.source.lowercased().contains("fy26_gc_npicomms@apple.com") && $0.title.contains("🔥") && ($0.title.contains("[FY26 GC NPI]") || $0.title.lowercased().contains("fy26 gc npi"))
+            }
+            var deduplicated: [NewsArticle] = []
+            for item in filtered {
+                let isDup = deduplicated.contains(where: { ex in
+                    if let idA = ex.originalURL, let idB = item.originalURL, !idA.isEmpty && !idB.isEmpty {
+                        if idA == idB { return true }
+                    }
+                    if ex.title == item.title && Calendar.current.isDate(ex.publishDate, inSameDayAs: item.publishDate) {
+                        let sA = ex.summary.trimmingCharacters(in: .whitespacesAndNewlines)
+                        let sB = item.summary.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if !sA.isEmpty && !sB.isEmpty && (sA == sB || sA.hasPrefix(sB.prefix(60)) || sB.hasPrefix(sA.prefix(60))) {
+                            return true
+                        }
+                    }
+                    return false
+                })
+                if !isDup {
+                    deduplicated.append(item)
+                }
+            }
+            self.npiEmails = deduplicated.sorted { $0.publishDate > $1.publishDate }
+        } else {
+            self.npiEmails = []
+        }
         
         let membersData = UserDefaults.standard.data(forKey: teamMembersStorageKey)
         if let data = membersData, let decodedMembers = try? JSONDecoder().decode([TeamMember].self, from: data) {
@@ -1228,7 +1736,20 @@ public class WorkbenchStore: ObservableObject {
                 if self.currentUser.name != "亮亮" && mod.author == "亮亮" {
                     mod.author = self.currentUser.name
                 }
-                mod.acknowledgments.removeAll { Self.mockNamesBlocklist.contains($0.memberName) }
+                mod.acknowledgments.removeAll { Self.mockNamesBlocklist.contains($0.memberName) || $0.memberName == "TestUser" }
+                
+                // 严格去重现有脏数据（每个真实成员仅保留一条最新的已读确认）
+                var uniqueMap: [String: AnnouncementAcknowledgment] = [:]
+                for ack in mod.acknowledgments {
+                    let name = ack.memberName.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !name.isEmpty, !Self.mockNamesBlocklist.contains(name) else { continue }
+                    if let ex = uniqueMap[name] {
+                        if ack.acknowledgedAt > ex.acknowledgedAt { uniqueMap[name] = ack }
+                    } else {
+                        uniqueMap[name] = ack
+                    }
+                }
+                mod.acknowledgments = Array(uniqueMap.values).sorted { $0.acknowledgedAt < $1.acknowledgedAt }
                 return mod
             }
         } else {
@@ -1244,17 +1765,15 @@ public class WorkbenchStore: ObservableObject {
                     if lower.contains("(test)") || lower.contains("[test]") || lower.contains(" test ") || lower.hasPrefix("test") || lower.contains("测试") || lower.contains("(practice)") || lower.contains("[practice]") || lower.contains("practice") || lower.contains("演练") {
                         return false
                     }
-                    // Only keep Green Email articles strictly matching sender & keywords within 1 rolling year
+                    if article.category == .slackSupport {
+                        return article.publishDate >= oneYearAgo
+                    }
                     if article.category == .greenEmail {
                         let isSenderMatch = article.source.lowercased().contains("ic_gc_aha_sacs@apple.com") || article.source.isEmpty
                         let isKeywordMatch = article.tags.contains("近期重要内容") || article.title.contains("近期重要内容")
                         return article.publishDate >= oneYearAgo && isSenderMatch && isKeywordMatch
                     }
-                    // Only keep Slack Support articles that actually contain a Records table
-                    if article.category == .slackSupport {
-                        return article.content.contains("|")
-                    }
-                    return true
+                    return false
                 }
                 .map { article in
                     var mod = article
@@ -1289,6 +1808,23 @@ public class WorkbenchStore: ObservableObject {
         let lastSyncSec = UserDefaults.standard.double(forKey: lastPriceSyncTimeStorageKey)
         if lastSyncSec > 0 {
             self.lastPriceSyncTime = Date(timeIntervalSince1970: lastSyncSec)
+        }
+        
+        self.lastMasterSyncTime = UserDefaults.standard.object(forKey: lastMasterSyncTimeKey) as? Date
+        self.lastMasterSyncedBy = UserDefaults.standard.string(forKey: lastMasterSyncedByKey)
+        
+        // 共享知识库 (Shared Knowledge Base) - 本地加载，纯空初始状态
+        let bookmarkedKData = UserDefaults.standard.stringArray(forKey: bookmarkedKnowledgeStorageKey) ?? []
+        self.bookmarkedKnowledgeIDs = Set(bookmarkedKData.compactMap { UUID(uuidString: $0) })
+        
+        let kData = UserDefaults.standard.data(forKey: knowledgeStorageKey)
+        if let data = kData, let decoded = try? JSONDecoder().decode([SharedKnowledgeArticle].self, from: data) {
+            self.knowledgeArticles = decoded.sorted {
+                if $0.isPinned != $1.isPinned { return $0.isPinned && !$1.isPinned }
+                return $0.createdAt > $1.createdAt
+            }
+        } else {
+            self.knowledgeArticles = []
         }
         
         var hasNewItems = false
@@ -1353,6 +1889,7 @@ public enum AppNavigationCategory: String, CaseIterable, Identifiable {
     case queryCenter = "查询中心"
     case mutualHelp = "互帮互助"
     case tools = "小工具"
+    case songKouQi = "松口气"
     
     public var id: String { rawValue }
     
@@ -1365,6 +1902,20 @@ public enum AppNavigationCategory: String, CaseIterable, Identifiable {
         case .queryCenter: return "magnifyingglass.circle.fill"
         case .mutualHelp: return "hands.sparkles.fill"
         case .tools: return "wrench.and.screwdriver.fill"
+        case .songKouQi: return "wind"
+        }
+    }
+    
+    public var themeColor: Color {
+        switch self {
+        case .dashboard: return .blue
+        case .teamShare: return .indigo
+        case .npiFocus: return .orange
+        case .personalCenter: return .purple
+        case .queryCenter: return .green
+        case .mutualHelp: return .brown
+        case .tools: return .cyan
+        case .songKouQi: return .teal
         }
     }
     
@@ -1372,7 +1923,7 @@ public enum AppNavigationCategory: String, CaseIterable, Identifiable {
         switch self {
         case .dashboard, .teamShare, .npiFocus, .queryCenter, .mutualHelp:
             return true
-        case .personalCenter, .tools:
+        case .personalCenter, .tools, .songKouQi:
             return false
         }
     }
@@ -1388,7 +1939,7 @@ public enum AppNavigationCategory: String, CaseIterable, Identifiable {
         case .teamShare:
             return [.announcements, .teamShifts]
         case .npiFocus:
-            return [.npiQuery, .rccFaqNpi]
+            return [.npiEmails, .npiQuery, .rccFaqNpi]
         case .personalCenter:
             return [.shifts, .leaveRequest, .myStats]
         case .queryCenter:
@@ -1396,7 +1947,9 @@ public enum AppNavigationCategory: String, CaseIterable, Identifiable {
         case .mutualHelp:
             return [.caseAssistance, .sharedKnowledge]
         case .tools:
-            return [.luckyWheel, .dateCalculator, .mindRetreat]
+            return [.luckyWheel, .dateCalculator]
+        case .songKouQi:
+            return [.relax]
         }
     }
 }
@@ -1409,7 +1962,8 @@ public enum AppNavigationItem: String, CaseIterable, Identifiable {
     case teamShifts = "团队班表"
     
     // NPI专题
-    case npiQuery = "NPI 检索"
+    case npiEmails = "NPI邮件合集"
+    case npiQuery = "NPI问题追踪"
     case rccFaqNpi = "RCC FAQ_NPI"
     
     // 个人中心
@@ -1429,7 +1983,7 @@ public enum AppNavigationItem: String, CaseIterable, Identifiable {
     // 小工具
     case luckyWheel = "幸运大转盘"
     case dateCalculator = "日期计算器"
-    case mindRetreat = "心灵歇脚处"
+    case relax = "松口气"
     
     // System Special
     case publish = "发布中心"
@@ -1446,6 +2000,7 @@ public enum AppNavigationItem: String, CaseIterable, Identifiable {
         case .leaveRequest: return "airplane.departure"
         case .myStats: return "chart.bar.xaxis"
         case .news: return "envelope.fill"
+        case .npiEmails: return "envelope.badge.shield.half.filled"
         case .npiQuery: return "doc.text.magnifyingglass"
         case .rccFaqNpi: return "questionmark.folder.fill"
         case .faq: return "questionmark.bubble.fill"
@@ -1454,7 +2009,7 @@ public enum AppNavigationItem: String, CaseIterable, Identifiable {
         case .sharedKnowledge: return "books.vertical.fill"
         case .luckyWheel: return "gift.fill"
         case .dateCalculator: return "calendar.badge.plus"
-        case .mindRetreat: return "leaf.circle.fill"
+        case .relax: return "wind"
         case .publish: return "square.and.pencil"
         case .settings: return "gearshape.fill"
         }
@@ -1468,4 +2023,42 @@ public enum AppNavigationItem: String, CaseIterable, Identifiable {
         }
         return nil
     }
+}
+
+// MARK: - Master Sync Result Model
+
+public struct MasterSyncResult: Identifiable {
+    public var id = UUID()
+    public var greenEmailCount: Int
+    public var greenEmailNew: Int
+    public var npiEmailCount: Int
+    public var npiEmailNew: Int
+    public var faqCount: Int
+    public var priceDiffCount: Int
+    public var syncedBy: String
+    public var timestamp: Date
+    
+    public init(
+        greenEmailCount: Int,
+        greenEmailNew: Int,
+        npiEmailCount: Int,
+        npiEmailNew: Int,
+        faqCount: Int,
+        priceDiffCount: Int = 0,
+        syncedBy: String,
+        timestamp: Date = Date()
+    ) {
+        self.greenEmailCount = greenEmailCount
+        self.greenEmailNew = greenEmailNew
+        self.npiEmailCount = npiEmailCount
+        self.npiEmailNew = npiEmailNew
+        self.faqCount = faqCount
+        self.priceDiffCount = priceDiffCount
+        self.syncedBy = syncedBy
+        self.timestamp = timestamp
+    }
+}
+
+public extension Notification.Name {
+    static let masterSyncDidComplete = Notification.Name("workbench_master_sync_did_complete")
 }

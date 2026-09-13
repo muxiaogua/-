@@ -5,11 +5,12 @@
 
 import Foundation
 import AppKit
+import PDFKit
 
 public struct MIMEHTMLParser {
     /// Extracts and decodes the HTML body from a raw RFC822 / MIME email source string.
     /// 同时自动扫描并内联全部 CID 图片附件为 Base64 data:image URL，确保图片脱机 100% 可见
-    public static func extractHTML(from rawSource: String) -> String? {
+    public static func extractHTML(from rawSource: String, fallbackPlainText: String? = nil) -> String? {
         let normalized = rawSource.replacingOccurrences(of: "\r\n", with: "\n").replacingOccurrences(of: "\r", with: "\n")
         
         // 1. 扫描邮件源文件中所有的图片附件（抽取 Content-ID 与 Base64 数据）
@@ -30,9 +31,9 @@ public struct MIMEHTMLParser {
             }
         }
         
-        var extractedHTML: String? = nil
+        var htmlCandidates: [String] = []
         
-        // 3. Iterate through all boundary chunks to find the exact leaf text/html part
+        // 3. Iterate through all boundary chunks to find candidate leaf text/html parts
         for boundary in boundaries {
             let delimiter = "--" + boundary
             let rawParts = normalized.components(separatedBy: delimiter)
@@ -49,47 +50,46 @@ public struct MIMEHTMLParser {
                     continue
                 }
                 
-                // Found the exact leaf HTML part!
                 let isQP = headerBlock.range(of: "quoted-printable", options: .caseInsensitive) != nil
                 let isB64 = headerBlock.range(of: "base64", options: .caseInsensitive) != nil
                 let charset = extractCharset(from: headerBlock)
                 
                 var body = String(part[doubleNewlineRange.upperBound...])
-                if let endPos = body.range(of: "\n--") {
-                    body = String(body[..<endPos.lowerBound])
-                }
                 if body.hasSuffix("--") {
                     body = String(body.dropLast(2))
                 }
                 body = body.trimmingCharacters(in: .whitespacesAndNewlines)
                 
+                var decoded: String? = nil
                 if isQP {
-                    extractedHTML = decodeQuotedPrintable(body, charset: charset)
+                    decoded = decodeQuotedPrintable(body, charset: charset)
                 } else if isB64 {
                     let cleanB64 = body.components(separatedBy: .whitespacesAndNewlines).joined()
                     if let data = Data(base64Encoded: cleanB64) {
-                        extractedHTML = decodeDataWithCharset(data, charset: charset)
+                        decoded = decodeDataWithCharset(data, charset: charset)
                     }
                 } else {
                     if body.contains("=3D") || body.contains("=E4=") || body.contains("=E5=") || body.contains("=20") {
-                        extractedHTML = decodeQuotedPrintable(body, charset: charset)
+                        decoded = decodeQuotedPrintable(body, charset: charset)
                     } else {
-                        extractedHTML = body
+                        decoded = body
                     }
                 }
-                break
+                if let dec = decoded, !dec.isEmpty {
+                    htmlCandidates.append(dec)
+                }
             }
-            if extractedHTML != nil { break }
         }
         
         // 4. Regex Fallback: Scan directly for leaf text/html part header and its body
-        if extractedHTML == nil {
-            let partPattern = #"(?i)(?:^|\n)--[^\n]+\n([^\n]*?Content-Type:\s*text/html[^\n]*\n[\s\S]*?\n\n)([\s\S]*?)(?=\n--|\Z)"#
+        if htmlCandidates.isEmpty {
+            let partPattern = #"(?i)(?:^|\n)--([^\n\r]+)[\r\n]+([^\n]*?Content-Type:\s*text/html[^\n]*\n[\s\S]*?\n\n)([\s\S]*?)(?=\r?\n--\1|\Z)"#
             if let regex = try? NSRegularExpression(pattern: partPattern) {
-                if let match = regex.firstMatch(in: normalized, options: [], range: NSRange(location: 0, length: normalized.utf16.count)) {
-                    if match.numberOfRanges >= 3,
-                       let headerRange = Range(match.range(at: 1), in: normalized),
-                       let bodyRange = Range(match.range(at: 2), in: normalized) {
+                let matches = regex.matches(in: normalized, options: [], range: NSRange(location: 0, length: normalized.utf16.count))
+                for match in matches {
+                    if match.numberOfRanges >= 4,
+                       let headerRange = Range(match.range(at: 2), in: normalized),
+                       let bodyRange = Range(match.range(at: 3), in: normalized) {
                         let headerBlock = String(normalized[headerRange])
                         let body = String(normalized[bodyRange]).trimmingCharacters(in: .whitespacesAndNewlines)
                         
@@ -97,25 +97,62 @@ public struct MIMEHTMLParser {
                         let isB64 = headerBlock.range(of: "base64", options: .caseInsensitive) != nil
                         let charset = extractCharset(from: headerBlock)
                         
+                        var decoded: String? = nil
                         if isQP {
-                            extractedHTML = decodeQuotedPrintable(body, charset: charset)
+                            decoded = decodeQuotedPrintable(body, charset: charset)
                         } else if isB64 {
                             let cleanB64 = body.components(separatedBy: .whitespacesAndNewlines).joined()
                             if let data = Data(base64Encoded: cleanB64) {
-                                extractedHTML = decodeDataWithCharset(data, charset: charset)
+                                decoded = decodeDataWithCharset(data, charset: charset)
                             }
                         } else {
-                            extractedHTML = body
+                            decoded = body
+                        }
+                        if let dec = decoded, !dec.isEmpty {
+                            htmlCandidates.append(dec)
                         }
                     }
                 }
             }
         }
         
-        guard let finalHTML = extractedHTML else { return nil }
+        // 选择实质内容最丰富的候选 HTML（排除仅包含空白 div 的骨架）
+        var extractedHTML = htmlCandidates.max(by: { htmlContentScore($0) < htmlContentScore($1) })
         
-        // 5. 将提取出的 HTML 中的 CID 图片地址无感替换为 Base64 内联图片
-        return inlineCIDImages(in: finalHTML, using: cidInfo)
+        // 若 HTML 为空或无任何实质文本/图片，且存在纯文本正文，自动用纯文本构建排版 HTML
+        if (extractedHTML == nil || htmlContentScore(extractedHTML!) == 0), let plain = fallbackPlainText, !plain.isEmpty {
+            let escaped = plain.replacingOccurrences(of: "<", with: "&lt;").replacingOccurrences(of: ">", with: "&gt;")
+            extractedHTML = """
+            <!DOCTYPE html>
+            <html>
+            <head>
+            <meta charset="utf-8">
+            <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif; font-size: 14px; line-height: 1.6; color: #1d1d1f; padding: 20px; }
+            .plain-box { white-space: pre-wrap; word-wrap: break-word; }
+            </style>
+            </head>
+            <body>
+            <div class="plain-box">\(escaped)</div>
+            </body>
+            </html>
+            """
+        }
+        
+        guard let finalBaseHTML = extractedHTML else { return nil }
+        
+        // 5. 将提取出的 HTML 中的 CID 图片地址无感替换为 Base64 内联图片，同时自动将未引用的附件图片追加展示
+        return inlineCIDImages(in: finalBaseHTML, using: cidInfo)
+    }
+    
+    /// 计算 HTML 文本与图片的实质内容丰富度权重（区分真正正文与空白骨架）
+    private static func htmlContentScore(_ html: String) -> Int {
+        var score = 0
+        if html.contains("<img") { score += 5000 }
+        let stripped = html.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        score += stripped.count
+        return score
     }
     
     // MARK: - CID 附件图像提取器 (自动扫描邮件各多分卷中的图片并生成 Base64 Data URL)
@@ -147,17 +184,30 @@ public struct MIMEHTMLParser {
             guard let doubleNewline = chunk.range(of: "\n\n") else { continue }
             let headers = String(chunk[..<doubleNewline.lowerBound])
             
-            // 必须是图片类型
-            guard headers.range(of: "Content-Type:\\s*image/", options: [.regularExpression, .caseInsensitive]) != nil else {
+            // 必须是图片类型或包含图片扩展名的附件分卷，或内联 PDF (Apple Mail 经常以单页 PDF 形式发送高清大图海报)
+            let isImageType = headers.range(of: "Content-Type:\\s*image/", options: [.regularExpression, .caseInsensitive]) != nil
+            let isImageExtension = headers.range(of: #"(?i)(?:filename|name)=["']?[^"'\n\r]+\.(png|jpe?g|gif|webp|svg|tiff?)["']?"#, options: .regularExpression) != nil
+            let isPDF = headers.range(of: "Content-Type:\\s*application/pdf", options: [.regularExpression, .caseInsensitive]) != nil ||
+                        headers.range(of: #"(?i)(?:filename|name)=["']?[^"'\n\r]+\.pdf["']?"#, options: .regularExpression) != nil
+            guard isImageType || isImageExtension || isPDF else {
                 continue
             }
             
             // 提取 mime 类型 (image/png, image/jpeg, image/tiff 等)
             var mimeType = "image/png"
-            if let mimeRegex = try? NSRegularExpression(pattern: #"(?i)Content-Type:\s*(image/[a-zA-Z0-9\-\+\.]+)"#),
+            if isPDF {
+                mimeType = "application/pdf"
+            } else if let mimeRegex = try? NSRegularExpression(pattern: #"(?i)Content-Type:\s*(image/[a-zA-Z0-9\-\+\.]+)"#),
                let match = mimeRegex.firstMatch(in: headers, range: NSRange(headers.startIndex..., in: headers)),
                let r = Range(match.range(at: 1), in: headers) {
                 mimeType = String(headers[r]).lowercased()
+            } else if let fnMatch = headers.range(of: #"(?i)(?:filename|name)=["']?[^"'\n\r]+\.(png|jpe?g|gif|webp|svg|tiff?)["']?"#, options: .regularExpression) {
+                let matchedStr = String(headers[fnMatch]).lowercased()
+                if matchedStr.contains(".jpg") || matchedStr.contains(".jpeg") { mimeType = "image/jpeg" }
+                else if matchedStr.contains(".gif") { mimeType = "image/gif" }
+                else if matchedStr.contains(".webp") { mimeType = "image/webp" }
+                else if matchedStr.contains(".svg") { mimeType = "image/svg+xml" }
+                else { mimeType = "image/png" }
             }
             
             // 提取 Content-ID: <xxx>
@@ -183,6 +233,32 @@ public struct MIMEHTMLParser {
             }
             let cleanB64 = rawBody.components(separatedBy: .whitespacesAndNewlines).joined()
             guard !cleanB64.isEmpty, cleanB64.count > 100 else { continue }
+            
+            // 如果是 PDF 附件海报，用 PDFKit 渲染为高清 JPEG
+            if isPDF {
+                if let rawData = Data(base64Encoded: cleanB64),
+                   let pdfDoc = PDFDocument(data: rawData) {
+                    for pageIdx in 0..<pdfDoc.pageCount {
+                        if let page = pdfDoc.page(at: pageIdx) {
+                            let pageRect = page.bounds(for: .mediaBox)
+                            let img = NSImage(size: pageRect.size, flipped: false) { rect in
+                                guard let ctx = NSGraphicsContext.current?.cgContext else { return false }
+                                ctx.setFillColor(NSColor.white.cgColor)
+                                ctx.fill(rect)
+                                page.draw(with: .mediaBox, to: ctx)
+                                return true
+                            }
+                            if let tiff = img.tiffRepresentation,
+                               let rep = NSBitmapImageRep(data: tiff),
+                               let jpgData = rep.representation(using: .jpeg, properties: [.compressionFactor: 0.85]) {
+                                let dataUrl = "data:image/jpeg;base64,\(jpgData.base64EncodedString())"
+                                orderedImages.append(dataUrl)
+                            }
+                        }
+                    }
+                }
+                continue
+            }
             
             var finalMime = mimeType
             var finalB64 = cleanB64
@@ -280,12 +356,42 @@ public struct MIMEHTMLParser {
         // 从后往前替换，保持字符索引有效
         for rep in replacements.reversed() {
             var newImgTag = rep.oldTag
-            if let replaceSrcRegex = try? NSRegularExpression(pattern: #"(?i)src=["'][^"']*["']"#) {
-                newImgTag = replaceSrcRegex.stringByReplacingMatches(in: newImgTag, range: NSRange(newImgTag.startIndex..., in: newImgTag), withTemplate: "src=\"\(rep.dataUrl)\"")
+            if newImgTag.range(of: #"(?i)\bsrc=["']"#, options: .regularExpression) != nil {
+                if let replaceSrcRegex = try? NSRegularExpression(pattern: #"(?i)src=["'][^"']*["']"#) {
+                    newImgTag = replaceSrcRegex.stringByReplacingMatches(in: newImgTag, range: NSRange(newImgTag.startIndex..., in: newImgTag), withTemplate: "src=\"\(rep.dataUrl)\"")
+                }
             } else {
                 newImgTag = newImgTag.replacingOccurrences(of: "<img", with: "<img src=\"\(rep.dataUrl)\"")
+                if !newImgTag.contains("src=") {
+                    newImgTag = newImgTag.replacingOccurrences(of: "<IMG", with: "<IMG src=\"\(rep.dataUrl)\"")
+                }
             }
             result.replaceSubrange(rep.range, with: newImgTag)
+        }
+        
+        // 关键增强：如果邮件分卷中包含图片附件（如直接粘贴或附加的图片），
+        // 但 HTML 中并未通过 <img> 标签引用它们，自动将所有未内联的图片追加到 HTML 正文中！
+        if !orderedImages.isEmpty {
+            var unreferencedImages: [String] = []
+            for imgUrl in orderedImages {
+                if !result.contains(imgUrl) {
+                    unreferencedImages.append(imgUrl)
+                }
+            }
+            
+            if !unreferencedImages.isEmpty {
+                var imagesHTML = "<div class=\"mail-inline-attachments\" style=\"margin: 20px auto; display: flex; flex-direction: column; gap: 20px; align-items: center; max-width: 100%;\">"
+                for imgUrl in unreferencedImages {
+                    imagesHTML += "<div style=\"width: 100%; text-align: center; margin-bottom: 12px;\"><img src=\"\(imgUrl)\" style=\"max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); display: inline-block;\" /></div>"
+                }
+                imagesHTML += "</div>"
+                
+                if let bodyClose = result.range(of: "</body>", options: .caseInsensitive) {
+                    result.insert(contentsOf: imagesHTML, at: bodyClose.lowerBound)
+                } else {
+                    result += imagesHTML
+                }
+            }
         }
         
         return result

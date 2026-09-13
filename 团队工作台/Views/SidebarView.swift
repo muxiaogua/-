@@ -32,6 +32,16 @@ public struct SidebarView: View {
                         .foregroundColor(.white)
                         .clipShape(Capsule())
                 }
+                
+                if item == .npiEmails && store.unreadNpiEmailsCount > 0 {
+                    Text("\(store.unreadNpiEmailsCount)")
+                        .font(.system(size: 10, weight: .bold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.orange)
+                        .foregroundColor(.white)
+                        .clipShape(Capsule())
+                }
             }
             .padding(.vertical, 4)
             .tag(item)
@@ -49,15 +59,16 @@ public struct SidebarView: View {
         case .leaveRequest: return .orange
         case .myStats: return .teal
         case .news: return .green
+        case .npiEmails: return .orange
         case .npiQuery: return .teal
         case .rccFaqNpi: return .orange
         case .faq: return .blue
         case .priceQuery: return .yellow
-        case .caseAssistance: return .pink
+        case .caseAssistance: return .brown
         case .sharedKnowledge: return .brown
         case .luckyWheel: return .red
         case .dateCalculator: return .cyan
-        case .mindRetreat: return .teal
+        case .relax: return .teal
         case .publish: return .orange
         case .settings: return .gray
         }

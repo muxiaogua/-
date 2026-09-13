@@ -270,7 +270,7 @@ public struct FAQView: View {
             // Sync Status Badge
             if let lastSync = chorusSync.lastSyncTime {
                 HStack(spacing: 4) {
-                    Text("已同步: \(formatSyncTime(lastSync))")
+                    Text(chorusSync.lastSyncedBy != nil && !chorusSync.lastSyncedBy!.isEmpty ? "已同步: \(formatSyncTime(lastSync)) (\(chorusSync.lastSyncedBy!))" : "已同步: \(formatSyncTime(lastSync))")
                         .font(.system(size: 11.5, weight: .medium))
                         .foregroundColor(Color.green)
                 }
@@ -282,6 +282,7 @@ public struct FAQView: View {
                     RoundedRectangle(cornerRadius: 6)
                         .stroke(Color.green.opacity(0.35), lineWidth: 1)
                 )
+                .help("上次同步时间：\(formatSyncTime(lastSync))\(chorusSync.lastSyncedBy != nil ? " 由 \(chorusSync.lastSyncedBy!) 同步" : "")")
             } else {
                 Text("已同步: Chorus 知识库 (\(store.faqItems.count)条)")
                     .font(.system(size: 11.5, weight: .medium))
@@ -306,7 +307,7 @@ public struct FAQView: View {
                             Image(systemName: "arrow.triangle.2.circlepath")
                                 .font(.system(size: 11, weight: .semibold))
                         }
-                        Text("同步最新 Chorus")
+                        Text(chorusSync.isSyncing ? "检查中..." : "检查最新Chorus")
                             .font(.system(size: 12, weight: .medium))
                     }
                     .padding(.horizontal, 12)

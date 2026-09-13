@@ -361,67 +361,69 @@ public struct PriceQueryView: View {
                     .buttonStyle(.plain)
                 }
                 
-                // 数据维护菜单
-                Menu {
-                    Button {
-                        Task {
-                            await handleLiveWebsiteSync()
+                // 数据维护菜单 (仅有同步权限的管理人员可见)
+                if store.canCurrentUserSyncData {
+                    Menu {
+                        Button {
+                            Task {
+                                await handleLiveWebsiteSync()
+                            }
+                        } label: {
+                            Label("检查 Apple 官网最新价格", systemImage: "network")
+                        }
+                        .disabled(pricingStore.isLiveSyncing)
+                        
+                        Divider()
+                        
+                        Toggle(isOn: Binding(
+                            get: { pricingStore.isAutoMonitoringEnabled },
+                            set: { pricingStore.setAutoMonitoring(enabled: $0) }
+                        )) {
+                            Label("后台自动监测 (检测变动自动通知)", systemImage: "bell.badge")
+                        }
+                        
+                        Divider()
+                        
+                        Button {
+                            handleImportFile()
+                        } label: {
+                            Label("导入外部快照文件 (HTML / JSON)...", systemImage: "doc.badge.arrow.up")
+                        }
+                        
+                        Divider()
+                        
+                        Button(role: .destructive) {
+                            pricingStore.resetToDefault()
+                            selectedModel = availableModels.first ?? ""
+                            importAlertMessage = "已恢复至出厂内置基准数据。"
+                            showImportAlert = true
+                        } label: {
+                            Label("重置为出厂基准数据", systemImage: "arrow.counterclockwise")
                         }
                     } label: {
-                        Label("立即从 Apple 官网同步价格", systemImage: "network")
-                    }
-                    .disabled(pricingStore.isLiveSyncing)
-                    
-                    Divider()
-                    
-                    Toggle(isOn: Binding(
-                        get: { pricingStore.isAutoMonitoringEnabled },
-                        set: { pricingStore.setAutoMonitoring(enabled: $0) }
-                    )) {
-                        Label("后台自动监测 (检测变动自动通知)", systemImage: "bell.badge")
-                    }
-                    
-                    Divider()
-                    
-                    Button {
-                        handleImportFile()
-                    } label: {
-                        Label("导入外部快照文件 (HTML / JSON)...", systemImage: "doc.badge.arrow.up")
-                    }
-                    
-                    Divider()
-                    
-                    Button(role: .destructive) {
-                        pricingStore.resetToDefault()
-                        selectedModel = availableModels.first ?? ""
-                        importAlertMessage = "已恢复至出厂内置基准数据。"
-                        showImportAlert = true
-                    } label: {
-                        Label("重置为出厂基准数据", systemImage: "arrow.counterclockwise")
-                    }
-                } label: {
-                    HStack(spacing: 5) {
-                        if pricingStore.isLiveSyncing {
-                            ProgressView()
-                                .scaleEffect(0.65)
-                                .frame(width: 14, height: 14)
-                            Text("官网同步中...")
-                                .font(.system(size: 11.5, weight: .bold))
-                                .foregroundColor(.blue)
-                        } else {
-                            Image(systemName: pricingStore.isAutoMonitoringEnabled ? "shield.lefthalf.filled.badge.checkmark" : "arrow.triangle.2.circlepath")
-                                .foregroundColor(pricingStore.isAutoMonitoringEnabled ? .green : .secondary)
-                            Text(pricingStore.isAutoMonitoringEnabled ? "自动监测中" : "官网更新与同步")
-                                .font(.system(size: 11.5, weight: .medium))
+                        HStack(spacing: 5) {
+                            if pricingStore.isLiveSyncing {
+                                ProgressView()
+                                    .scaleEffect(0.65)
+                                    .frame(width: 14, height: 14)
+                                Text("官网同步中...")
+                                    .font(.system(size: 11.5, weight: .bold))
+                                    .foregroundColor(.blue)
+                            } else {
+                                Image(systemName: pricingStore.isAutoMonitoringEnabled ? "shield.lefthalf.filled.badge.checkmark" : "arrow.triangle.2.circlepath")
+                                    .foregroundColor(pricingStore.isAutoMonitoringEnabled ? .green : .secondary)
+                                Text(pricingStore.isAutoMonitoringEnabled ? "自动监测中" : "检查官网价格")
+                                    .font(.system(size: 11.5, weight: .medium))
+                            }
                         }
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 5.5)
+                        .background(pricingStore.isAutoMonitoringEnabled ? Color.green.opacity(0.12) : Color.secondary.opacity(0.1))
+                        .foregroundColor(pricingStore.isAutoMonitoringEnabled ? .green : .primary)
+                        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
                     }
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 5.5)
-                    .background(pricingStore.isAutoMonitoringEnabled ? Color.green.opacity(0.12) : Color.secondary.opacity(0.1))
-                    .foregroundColor(pricingStore.isAutoMonitoringEnabled ? .green : .primary)
-                    .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
             
             // 第二行（仅在维修价格模式下显示）：品类标签组 (iPhone/iPad/Mac...) + AC+保外切换开关

@@ -221,7 +221,7 @@ public struct NewsView: View {
                                 Image(systemName: "arrow.triangle.2.circlepath")
                                     .font(.system(size: 10.5))
                             }
-                            Text("同步")
+                            Text(mailSyncService.isSyncing ? "检查中..." : "检查更新")
                                 .font(.system(size: 11.5, weight: .medium))
                         }
                         .padding(.horizontal, 9)
@@ -338,11 +338,11 @@ public struct NewsView: View {
                     HStack(spacing: 3) {
                         Image(systemName: "clock.arrow.circlepath")
                             .font(.system(size: 9))
-                        Text(formatSyncTime(lastSync))
+                        Text(mailSyncService.lastSyncedBy != nil && !mailSyncService.lastSyncedBy!.isEmpty ? "\(formatSyncTime(lastSync)) (\(mailSyncService.lastSyncedBy!))" : formatSyncTime(lastSync))
                             .font(.system(size: 10))
                     }
                     .foregroundColor(.secondary)
-                    .help("上次同步时间：\(formatSyncTime(lastSync))")
+                    .help("上次同步时间：\(formatSyncTime(lastSync))\(mailSyncService.lastSyncedBy != nil ? " 由 \(mailSyncService.lastSyncedBy!) 同步" : "")")
                 } else {
                     Text("尚未同步")
                         .font(.system(size: 10))
@@ -374,7 +374,7 @@ public struct NewsView: View {
                     Text("暂无未读邮件")
                         .font(.system(size: 14, weight: .bold))
                         .foregroundColor(.primary)
-                    Text("所有重要邮件均已阅读完成。\n可在上方选择分类查看 Green Email 或 Slack Support。")
+                    Text("所有重要邮件均已阅读完成。\n可在上方切换查看历史 Green Email。")
                         .font(.system(size: 12))
                         .multilineTextAlignment(.center)
                         .foregroundColor(.secondary)

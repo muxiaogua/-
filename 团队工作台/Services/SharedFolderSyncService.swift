@@ -201,7 +201,7 @@ final public class SharedFolderSyncService: NSObject, ObservableObject, NSFilePr
     
     private func createSubdirectoriesIfNeeded(at baseURL: URL) {
         let fileManager = FileManager.default
-        let subdirs = ["announcements", "acknowledgments", "news", "comments", "faq", "roster", "permissions"]
+        let subdirs = ["announcements", "acknowledgments", "news", "comments", "faq", "roster", "permissions", "shifts", "npi_emails", "feedback", "shared_knowledge"]
         for sub in subdirs {
             let subURL = baseURL.appendingPathComponent(sub, isDirectory: true)
             if !fileManager.fileExists(atPath: subURL.path) {

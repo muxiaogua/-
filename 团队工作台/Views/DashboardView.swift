@@ -267,7 +267,7 @@ public struct DashboardView: View {
                     store.selectedNavigation = .npiQuery
                 }) {
                     HStack(spacing: 4) {
-                        Text("进入 NPI 检索")
+                        Text("进入 NPI问题追踪")
                             .font(.system(size: 12, weight: .medium))
                         Image(systemName: "arrow.right")
                             .font(.system(size: 10, weight: .bold))
@@ -284,7 +284,7 @@ public struct DashboardView: View {
                         Image(systemName: "flame")
                             .font(.system(size: 30))
                             .foregroundColor(.secondary.opacity(0.4))
-                        Text("暂无 NPI 重点议题记录（可前往「NPI 检索」从邮件自动导入）")
+                        Text("暂无 NPI 重点议题记录（可前往「NPI问题追踪」从官方邮件自动导入）")
                             .font(.system(size: 13))
                             .foregroundColor(.secondary)
                     }
@@ -343,10 +343,11 @@ public struct DashboardView: View {
                 }
                 
                 // Issue ID & Title
-                HStack(alignment: .top, spacing: 4) {
-                    Text(item.id)
+                HStack(alignment: .top, spacing: 5) {
+                    let displayId = issueDigits(from: item.id)
+                    Text(displayId)
                         .font(.system(size: 12.5, weight: .bold, design: .monospaced))
-                        .foregroundColor(.red)
+                        .foregroundColor(.blue)
                     
                     Text(item.title)
                         .font(.system(size: 12.5, weight: .bold))
@@ -355,11 +356,13 @@ public struct DashboardView: View {
                 }
                 
                 // Description Snippet
-                Text(item.desc)
-                    .font(.system(size: 11.5))
-                    .foregroundColor(.secondary)
-                    .lineLimit(2)
-                    .lineSpacing(2)
+                if !item.desc.isEmpty && item.desc != item.title {
+                    Text(item.desc)
+                        .font(.system(size: 11.5))
+                        .foregroundColor(.secondary)
+                        .lineLimit(2)
+                        .lineSpacing(2)
+                }
                 
                 Spacer(minLength: 2)
                 
@@ -391,13 +394,19 @@ public struct DashboardView: View {
         .buttonStyle(.plain)
     }
     
+    private func issueDigits(from id: String) -> String {
+        let digits = id.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()
+        return digits.isEmpty ? id.trimmingCharacters(in: .whitespaces) : digits
+    }
+    
     private func npiStatusColor(_ status: String) -> Color {
         switch status {
         case "需提交RTA": return .red
-        case "无需RTA": return .gray
-        case "积极投票": return .orange
+        case "无需RTA": return .green
+        case "积极投票": return .blue
+        case "需关注更新": return .orange
         case "已修复": return .green
-        default: return .blue
+        default: return .secondary
         }
     }
     

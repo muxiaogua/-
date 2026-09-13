@@ -11,27 +11,14 @@ public struct SettingsView: View {
     @ObservedObject var sharedFolderSync = SharedFolderSyncService.shared
     @ObservedObject var updateService = AppUpdateService.shared
     
-    enum SettingsAlert: Identifiable {
-        case confirmClearNews
-        case clearNewsSuccess
-        case confirmClearLocal
-        case clearLocalSuccess
-        case testNotificationSent
-        
-        var id: String {
-            switch self {
-            case .confirmClearNews: return "confirmClearNews"
-            case .clearNewsSuccess: return "clearNewsSuccess"
-            case .confirmClearLocal: return "confirmClearLocal"
-            case .clearLocalSuccess: return "clearLocalSuccess"
-            case .testNotificationSent: return "testNotificationSent"
-            }
-        }
-    }
-    
-    @State private var activeAlert: SettingsAlert? = nil
+    @State private var showConfirmClearNews = false
+    @State private var showClearNewsSuccess = false
+    @State private var showConfirmClearLocal = false
+    @State private var showClearLocalSuccess = false
+    @State private var showTestNotificationSent = false
     @State private var showEditProfileSheet = false
     @State private var showAddPermissionSheet = false
+    @State private var showProductFeedbackSheet = false
     
     // Edit Profile States
     @State private var editName = ""
@@ -96,53 +83,54 @@ public struct SettingsView: View {
             .padding(28)
         }
         .background(Color(NSColor.windowBackgroundColor))
-        .alert(item: $activeAlert) { alertType in
-            switch alertType {
-            case .confirmClearNews:
-                return Alert(
-                    title: Text("确认清空重要邮件数据？"),
-                    message: Text("此操作将彻底清除本地与云端已保存的全部重要邮件（Green Email）内容并重置为空白状态。\n\n该操作无法撤销，确定要清空吗？"),
-                    primaryButton: .destructive(Text("确认清空")) {
-                        store.clearAllNewsArticles()
-                        activeAlert = .clearNewsSuccess
-                    },
-                    secondaryButton: .cancel(Text("取消"))
-                )
-            case .clearNewsSuccess:
-                return Alert(
-                    title: Text("邮件数据已清空"),
-                    message: Text("所有重要邮件缓存与云端同步记录已成功清空。"),
-                    dismissButton: .default(Text("确定"))
-                )
-            case .confirmClearLocal:
-                return Alert(
-                    title: Text("确认清空本地数据？"),
-                    message: Text("此操作将清除当前电脑上本地缓存的全部公告、邮件与已读记录，不影响他人与云端共享文件。\n\n确定要清空吗？"),
-                    primaryButton: .destructive(Text("确认清空")) {
-                        store.clearAllLocalData()
-                        activeAlert = .clearLocalSuccess
-                    },
-                    secondaryButton: .cancel(Text("取消"))
-                )
-            case .clearLocalSuccess:
-                return Alert(
-                    title: Text("本地数据已清空"),
-                    message: Text("当前电脑的本地缓存内容已清理完毕，重新打开或同步即可按需拉取。"),
-                    dismissButton: .default(Text("确定"))
-                )
-            case .testNotificationSent:
-                return Alert(
-                    title: Text("测试通知已发送"),
-                    message: Text("已通过 macOS 系统通知中心发送一条测试横幅，请留意屏幕右上角。"),
-                    dismissButton: .default(Text("好"))
-                )
+        .alert("确认清空重要邮件数据？", isPresented: $showConfirmClearNews) {
+            Button("确认清空", role: .destructive) {
+                store.clearAllNewsArticles()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                    showClearNewsSuccess = true
+                }
             }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text("此操作将彻底清除本地与云端已保存的全部重要邮件（Green Email）内容并重置为空白状态。\n\n该操作无法撤销，确定要清空吗？")
+        }
+        .alert("邮件数据已清空", isPresented: $showClearNewsSuccess) {
+            Button("确定", role: .cancel) {}
+        } message: {
+            Text("所有重要邮件缓存与云端同步记录已成功清空。")
+        }
+        .alert("确认清空本地数据？", isPresented: $showConfirmClearLocal) {
+            Button("确认清空", role: .destructive) {
+                store.clearAllLocalData()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                    showClearLocalSuccess = true
+                }
+            }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text("此操作将清除当前电脑上本地缓存的全部公告、邮件与已读记录，不影响他人与云端共享文件。\n\n确定要清空吗？")
+        }
+        .alert("本地数据已清空", isPresented: $showClearLocalSuccess) {
+            Button("确定", role: .cancel) {}
+        } message: {
+            Text("当前电脑的本地缓存内容已清理完毕，重新打开或同步即可按需拉取。")
+        }
+        .alert("测试通知已发送", isPresented: $showTestNotificationSent) {
+            Button("好", role: .cancel) {}
+        } message: {
+            Text("已通过 macOS 系统通知中心发送一条测试横幅，请留意屏幕右上角。")
         }
         .sheet(isPresented: $showEditProfileSheet) {
             editProfileSheetView
         }
         .sheet(isPresented: $showAddPermissionSheet) {
             addPermissionSheetView
+        }
+        .sheet(isPresented: $showProductFeedbackSheet) {
+            ProductFeedbackSheetView(
+                currentUserName: store.currentUser.name,
+                appVersion: "\(updateService.currentVersion) (Build \(updateService.currentBuild))"
+            )
         }
     }
     
@@ -967,7 +955,7 @@ public struct SettingsView: View {
                             subtitle: "通知通道测试",
                             body: "恭喜！您的 macOS 团队工作台本地通知通道运行正常。"
                         )
-                        activeAlert = .testNotificationSent
+                        showTestNotificationSent = true
                     }
                     .controlSize(.small)
                 }
@@ -1013,7 +1001,7 @@ public struct SettingsView: View {
                         }
                         Spacer()
                         Button("清空邮件云端数据", role: .destructive) {
-                            activeAlert = .confirmClearNews
+                            showConfirmClearNews = true
                         }
                         .controlSize(.small)
                     }
@@ -1033,7 +1021,7 @@ public struct SettingsView: View {
                     }
                     Spacer()
                     Button("清空本地数据", role: .destructive) {
-                        activeAlert = .confirmClearLocal
+                        showConfirmClearLocal = true
                     }
                     .controlSize(.small)
                 }
@@ -1050,7 +1038,7 @@ public struct SettingsView: View {
     
     private var aboutSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("关于团队工作台")
+            Text("关于莱斯小站")
                 .font(.system(size: 15, weight: .bold))
             
             VStack(alignment: .leading, spacing: 8) {
@@ -1099,6 +1087,29 @@ public struct SettingsView: View {
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
                 }
+                Divider()
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("产品反馈")
+                            .font(.system(size: 12, weight: .medium))
+                        Text("提出功能建议、故障反馈或使用体验，反馈将直发至 liang_wu@apple.com")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                    Button(action: {
+                        showProductFeedbackSheet = true
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "bubble.left.and.exclamationmark.bubble.right.fill")
+                                .font(.system(size: 11))
+                            Text("提供反馈")
+                                .font(.system(size: 11.5, weight: .medium))
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                }
             }
             .padding(16)
             .background(Color(NSColor.controlBackgroundColor))
@@ -1107,6 +1118,347 @@ public struct SettingsView: View {
                 RoundedRectangle(cornerRadius: 10)
                     .stroke(Color.secondary.opacity(0.1), lineWidth: 1)
             )
+        }
+    }
+}
+
+// MARK: - Product Feedback (产品反馈模型与交互界面)
+
+public enum FeedbackType: String, CaseIterable, Identifiable, Codable {
+    case feature = "功能建议"
+    case bug = "故障反馈"
+    case experience = "界面体验"
+    case other = "其他吐槽"
+    
+    public var id: String { rawValue }
+    
+    public var icon: String {
+        switch self {
+        case .feature: return "lightbulb.fill"
+        case .bug: return "exclamationmark.triangle.fill"
+        case .experience: return "paintpalette.fill"
+        case .other: return "bubble.left.and.bubble.right.fill"
+        }
+    }
+    
+    public var color: Color {
+        switch self {
+        case .feature: return .orange
+        case .bug: return .red
+        case .experience: return .blue
+        case .other: return .purple
+        }
+    }
+}
+
+public struct ProductFeedbackItem: Identifiable, Codable {
+    public var id: UUID
+    public var type: FeedbackType
+    public var title: String
+    public var content: String
+    public var submitter: String
+    public var appVersion: String
+    public var osVersion: String
+    public var createdAt: Date
+    
+    public init(
+        id: UUID = UUID(),
+        type: FeedbackType = .feature,
+        title: String,
+        content: String,
+        submitter: String,
+        appVersion: String,
+        osVersion: String = ProcessInfo.processInfo.operatingSystemVersionString,
+        createdAt: Date = Date()
+    ) {
+        self.id = id
+        self.type = type
+        self.title = title
+        self.content = content
+        self.submitter = submitter
+        self.appVersion = appVersion
+        self.osVersion = osVersion
+        self.createdAt = createdAt
+    }
+}
+
+struct ProductFeedbackSheetView: View {
+    let currentUserName: String
+    let appVersion: String
+    
+    @Environment(\.dismiss) private var dismiss
+    
+    @State private var selectedType: FeedbackType = .feature
+    @State private var titleInput: String = ""
+    @State private var contentInput: String = ""
+    @State private var includeSystemInfo: Bool = true
+    @State private var isSubmitting: Bool = false
+    @State private var showSuccessAlert: Bool = false
+    @State private var alertTitle: String = "反馈已发送"
+    @State private var alertMessage: String = ""
+    
+    private var isFormValid: Bool {
+        !titleInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !contentInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            // Header
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(Color.blue.opacity(0.12))
+                        .frame(width: 40, height: 40)
+                    Image(systemName: "bubble.left.and.exclamationmark.bubble.right.fill")
+                        .font(.system(size: 18))
+                        .foregroundColor(.blue)
+                }
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("产品使用反馈")
+                        .font(.system(size: 16, weight: .bold))
+                    Text("感谢您帮助团队工作台变得更好！您的反馈将直接发送至负责人邮箱。")
+                        .font(.system(size: 11.5))
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+            }
+            .padding(.top, 4)
+            
+            Divider()
+            
+            // 1. 类型选择
+            VStack(alignment: .leading, spacing: 8) {
+                Text("反馈类型")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.secondary)
+                
+                HStack(spacing: 8) {
+                    ForEach(FeedbackType.allCases) { type in
+                        let isSelected = (selectedType == type)
+                        Button {
+                            selectedType = type
+                        } label: {
+                            HStack(spacing: 5) {
+                                Image(systemName: type.icon)
+                                    .font(.system(size: 11.5))
+                                Text(type.rawValue)
+                                    .font(.system(size: 12, weight: isSelected ? .bold : .regular))
+                            }
+                            .foregroundColor(isSelected ? type.color : .secondary)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5.5)
+                            .background(isSelected ? type.color.opacity(0.12) : Color.secondary.opacity(0.08))
+                            .clipShape(Capsule())
+                            .overlay(
+                                Capsule().stroke(isSelected ? type.color.opacity(0.5) : Color.clear, lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            
+            // 2. 简要标题
+            VStack(alignment: .leading, spacing: 6) {
+                Text("反馈标题")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.secondary)
+                
+                TextField("一句话概括您的反馈 (例如：希望重要邮件支持按关键词高亮)", text: $titleInput)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 12.5))
+            }
+            
+            // 3. 详细描述
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text("详细说明")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Text("支持多行")
+                        .font(.system(size: 10.5))
+                        .foregroundColor(.secondary.opacity(0.7))
+                }
+                
+                ZStack(alignment: .topLeading) {
+                    TextEditor(text: $contentInput)
+                        .font(.system(size: 12))
+                        .padding(6)
+                        .background(Color(NSColor.textBackgroundColor))
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                        )
+                        .frame(height: 120)
+                    
+                    if contentInput.isEmpty {
+                        Text("请详细描述您遇到的问题现象、复现步骤或期望的功能效果...")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary.opacity(0.5))
+                            .padding(.horizontal, 11)
+                            .padding(.vertical, 12)
+                            .allowsHitTesting(false)
+                    }
+                }
+            }
+            
+            // 4. 环境信息附带
+            HStack {
+                Toggle(isOn: $includeSystemInfo) {
+                    HStack(spacing: 4) {
+                        Text("附带提交人与环境信息")
+                            .font(.system(size: 11.5))
+                        Text("(\(currentUserName) · \(appVersion))")
+                            .font(.system(size: 10.5))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .toggleStyle(.checkbox)
+                Spacer()
+            }
+            
+            Divider()
+            
+            // 底部操作按钮
+            HStack {
+                Button("取消") {
+                    dismiss()
+                }
+                .buttonStyle(.plain)
+                .foregroundColor(.secondary)
+                
+                Spacer()
+                
+                Button(action: {
+                    submitFeedback()
+                }) {
+                    HStack(spacing: 5) {
+                        if isSubmitting {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else {
+                            Image(systemName: "paperplane.fill")
+                                .font(.system(size: 11.5))
+                        }
+                        Text(isSubmitting ? "正在发送..." : "发送反馈邮件")
+                            .font(.system(size: 12.5, weight: .semibold))
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 6)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(!isFormValid || isSubmitting)
+            }
+        }
+        .padding(22)
+        .frame(width: 480)
+        .alert(alertTitle, isPresented: $showSuccessAlert) {
+            Button("好的") {
+                dismiss()
+            }
+        } message: {
+            Text(alertMessage)
+        }
+    }
+    
+    private func submitFeedback() {
+        isSubmitting = true
+        let item = ProductFeedbackItem(
+            type: selectedType,
+            title: titleInput.trimmingCharacters(in: .whitespacesAndNewlines),
+            content: contentInput.trimmingCharacters(in: .whitespacesAndNewlines),
+            submitter: includeSystemInfo ? currentUserName : "匿名成员",
+            appVersion: includeSystemInfo ? appVersion : "未知"
+        )
+        
+        // 1. 本地历史存底缓存
+        var localList: [ProductFeedbackItem] = []
+        if let data = UserDefaults.standard.data(forKey: "workbench_local_feedback_history"),
+           let decoded = try? JSONDecoder().decode([ProductFeedbackItem].self, from: data) {
+            localList = decoded
+        }
+        localList.insert(item, at: 0)
+        if let encoded = try? JSONEncoder().encode(localList) {
+            UserDefaults.standard.set(encoded, forKey: "workbench_local_feedback_history")
+        }
+        
+        // 2. 直接通过 Apple Mail 发送至 liang_wu@apple.com (无需同步共享文件夹)
+        sendFeedbackEmail(item: item)
+    }
+    
+    private func sendFeedbackEmail(item: ProductFeedbackItem) {
+        let recipient = "liang_wu@apple.com"
+        let emailSubject = "[团队工作台反馈] [\(item.type.rawValue)] \(item.title)"
+        
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        let timeStr = dateFormatter.string(from: item.createdAt)
+        
+        let emailBody = """
+        【团队工作台 · 产品反馈】
+        
+        反馈类型：\(item.type.rawValue)
+        反馈标题：\(item.title)
+        提交人员：\(item.submitter)
+        提交时间：\(timeStr)
+        应用版本：\(item.appVersion)
+        系统环境：\(item.osVersion)
+        
+        --------------------------------------------------
+        【详细说明 / 期望效果】：
+        \(item.content)
+        --------------------------------------------------
+        """
+        
+        DispatchQueue.global(qos: .userInitiated).async {
+            let safeSubj = emailSubject
+                .replacingOccurrences(of: "\\", with: "\\\\")
+                .replacingOccurrences(of: "\"", with: "\\\"")
+            let safeBody = emailBody
+                .replacingOccurrences(of: "\\", with: "\\\\")
+                .replacingOccurrences(of: "\"", with: "\\\"")
+                .replacingOccurrences(of: "\n", with: "\\n")
+            
+            let scriptDirectSend = """
+            tell application "Mail"
+                try
+                    set newMsg to make new outgoing message with properties {subject:"\(safeSubj)", content:"\(safeBody)", visible:false}
+                    tell newMsg
+                        make new to recipient at end of to recipients with properties {address:"\(recipient)"}
+                    end tell
+                    send newMsg
+                    return "SENT"
+                on error errMsg
+                    set fallbackMsg to make new outgoing message with properties {subject:"\(safeSubj)", content:"\(safeBody)", visible:true}
+                    tell fallbackMsg
+                        make new to recipient at end of to recipients with properties {address:"\(recipient)"}
+                    end tell
+                    activate
+                    return "OPENED"
+                end try
+            end tell
+            """
+            
+            var errorDict: NSDictionary?
+            let appleScript = NSAppleScript(source: scriptDirectSend)
+            let resultDesc = appleScript?.executeAndReturnError(&errorDict)
+            let resultStr = resultDesc?.stringValue ?? ""
+            
+            DispatchQueue.main.async {
+                self.isSubmitting = false
+                if resultStr == "SENT" {
+                    self.alertTitle = "反馈已发送"
+                    self.alertMessage = "非常感谢您的宝贵建议！反馈内容已直接通过邮件发送至 \(recipient)。"
+                } else {
+                    self.alertTitle = "邮件已就绪"
+                    self.alertMessage = "已为您在邮件应用中生成反馈草稿，请在弹出的邮件窗口中点击发送至 \(recipient)。"
+                }
+                self.showSuccessAlert = true
+            }
         }
     }
 }

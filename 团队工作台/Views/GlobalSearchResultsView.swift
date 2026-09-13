@@ -11,6 +11,7 @@ public struct GlobalSearchResultsView: View {
     
     enum SearchFilterTab: String, CaseIterable, Identifiable {
         case all = "全部结果"
+        case knowledge = "共享知识库"
         case announcements = "团队公告"
         case news = "重要邮件"
         case faq = "FAQ知识库"
@@ -28,6 +29,19 @@ public struct GlobalSearchResultsView: View {
     
     private var queryTokens: [String] {
         query.split(whereSeparator: { $0.isWhitespace || $0 == "+" || $0 == "," }).map(String.init).filter { !$0.isEmpty }
+    }
+    
+    // Matched Knowledge Articles (Matches all tokens across title, summary, solution, category, tags, author, keyTips)
+    private var matchedKnowledge: [SharedKnowledgeArticle] {
+        let tokens = queryTokens
+        guard !tokens.isEmpty else { return [] }
+        return store.knowledgeArticles.filter { article in
+            let refsCombined = article.referenceArticles.map { "\($0.title) \($0.urlOrCoreId)" }.joined(separator: " ")
+            let combinedText = "\(article.title) \(article.summary) \(article.solution) \(article.category.rawValue) \(article.tags.joined(separator: " ")) \(article.author) \(article.keyTips.joined(separator: " ")) \(article.faultBackground) \(article.troubleshootingLogic) \(article.caseId) \(article.deviceAndOS) \(refsCombined)"
+            return tokens.allSatisfy { token in
+                combinedText.localizedCaseInsensitiveContains(token)
+            }
+        }
     }
     
     // Matched Announcements (Matches all tokens across title, content, author, tags)
@@ -67,7 +81,7 @@ public struct GlobalSearchResultsView: View {
     }
     
     private var totalCount: Int {
-        matchedAnnouncements.count + matchedNews.count + matchedFAQs.count
+        matchedKnowledge.count + matchedAnnouncements.count + matchedNews.count + matchedFAQs.count
     }
     
     public init() {}
@@ -142,6 +156,7 @@ public struct GlobalSearchResultsView: View {
     private var tabsSection: some View {
         HStack(spacing: 8) {
             tabPill(title: "全部结果", count: totalCount, tab: .all)
+            tabPill(title: "共享知识库", count: matchedKnowledge.count, tab: .knowledge)
             tabPill(title: "团队公告", count: matchedAnnouncements.count, tab: .announcements)
             tabPill(title: "重要邮件", count: matchedNews.count, tab: .news)
             tabPill(title: "FAQ知识库", count: matchedFAQs.count, tab: .faq)
@@ -184,6 +199,19 @@ public struct GlobalSearchResultsView: View {
     
     private var resultsListSection: some View {
         VStack(alignment: .leading, spacing: 24) {
+            // 0. Shared Knowledge Base Group
+            if (selectedTab == .all || selectedTab == .knowledge) && !matchedKnowledge.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    sectionHeader(title: "共享知识库", icon: "books.vertical.fill", count: matchedKnowledge.count, color: .indigo)
+                    
+                    VStack(spacing: 10) {
+                        ForEach(matchedKnowledge) { article in
+                            knowledgeResultCard(article)
+                        }
+                    }
+                }
+            }
+            
             // 1. Announcements Group
             if (selectedTab == .all || selectedTab == .announcements) && !matchedAnnouncements.isEmpty {
                 VStack(alignment: .leading, spacing: 10) {
@@ -246,6 +274,190 @@ public struct GlobalSearchResultsView: View {
     }
     
     // MARK: - In-place Accordion Cards
+    
+    private func knowledgeResultCard(_ item: SharedKnowledgeArticle) -> some View {
+        let isExpanded = expandedResultIDs.contains(item.id)
+        
+        return VStack(alignment: .leading, spacing: 0) {
+            // Clickable Header
+            Button(action: {
+                toggleExpansion(for: item.id)
+            }) {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(alignment: .center, spacing: 8) {
+                        // Category Badge
+                        HStack(spacing: 4) {
+                            Image(systemName: item.category.icon)
+                                .font(.system(size: 9.5))
+                            Text(item.category.rawValue)
+                                .font(.system(size: 10.5, weight: .bold))
+                        }
+                        .foregroundColor(item.category.themeColor)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2.5)
+                        .background(item.category.themeColor.opacity(0.12))
+                        .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                        
+                        if item.isPinned {
+                            HStack(spacing: 3) {
+                                Image(systemName: "pin.fill")
+                                    .font(.system(size: 8.5))
+                                Text("置顶")
+                                    .font(.system(size: 10, weight: .bold))
+                            }
+                            .foregroundColor(.orange)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(Color.orange.opacity(0.12))
+                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                        }
+                        
+                        Text(highlightedAttributedString(for: item.title, query: query))
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.primary)
+                            .lineLimit(isExpanded ? nil : 1)
+                        
+                        Spacer()
+                        
+                        Text("贡献者: \(item.author)")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        
+                        Text(formatDate(item.createdAt))
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        
+                        Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.secondary)
+                            .padding(.leading, 4)
+                    }
+                    
+                    if !isExpanded {
+                        let previewText = item.summary.isEmpty ? item.solution : item.summary
+                        Text(highlightedAttributedString(for: previewText, query: query))
+                            .font(.system(size: 12.5))
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                            .lineSpacing(2)
+                    }
+                }
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.plain)
+            
+            // Expanded Details
+            if isExpanded {
+                Divider()
+                
+                VStack(alignment: .leading, spacing: 12) {
+                    if !item.summary.isEmpty {
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: "lightbulb.fill")
+                                .font(.system(size: 13))
+                                .foregroundColor(.orange)
+                                .padding(.top, 1)
+                            Text(highlightedAttributedString(for: item.summary, query: query))
+                                .font(.system(size: 13))
+                                .foregroundColor(.primary)
+                        }
+                        .padding(10)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.orange.opacity(0.08))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("【解决方案】")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(.blue)
+                        
+                        Text(highlightedAttributedString(for: item.solution, query: query))
+                            .font(.system(size: 13.5))
+                            .lineSpacing(5)
+                            .foregroundColor(.primary.opacity(0.88))
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    
+                    if !item.keyTips.isEmpty {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("【避坑贴士】")
+                                .font(.system(size: 11.5, weight: .bold))
+                                .foregroundColor(.red)
+                            ForEach(item.keyTips, id: \.self) { tip in
+                                Text("• \(tip)")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .padding(8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.red.opacity(0.06))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                    }
+                    
+                    Divider()
+                    
+                    HStack {
+                        if !item.tags.isEmpty {
+                            HStack(spacing: 5) {
+                                ForEach(item.tags, id: \.self) { tag in
+                                    Text("#\(tag)")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        }
+                        
+                        Spacer()
+                        
+                        Button(action: {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(item.solution, forType: .string)
+                            copiedItemID = item.id
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                                if copiedItemID == item.id { copiedItemID = nil }
+                            }
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: copiedItemID == item.id ? "checkmark" : "doc.on.doc")
+                                Text(copiedItemID == item.id ? "已复制方案" : "复制方案")
+                            }
+                            .font(.system(size: 11.5))
+                            .foregroundColor(copiedItemID == item.id ? .green : .secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.trailing, 10)
+                        
+                        Button(action: {
+                            store.selectedCategory = .mutualHelp
+                            store.selectedNavigation = .sharedKnowledge
+                            store.selectedKnowledgeArticleID = item.id
+                            store.searchText = ""
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrow.up.right.square")
+                                Text("前往共享知识库")
+                            }
+                            .font(.system(size: 11.5, weight: .medium))
+                            .foregroundColor(.blue)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(14)
+                .background(Color(NSColor.textBackgroundColor).opacity(0.4))
+            }
+        }
+        .background(Color(NSColor.controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .stroke(Color.secondary.opacity(0.14), lineWidth: 1)
+        )
+    }
     
     private func announcementResultCard(_ item: Announcement) -> some View {
         let isExpanded = expandedResultIDs.contains(item.id)

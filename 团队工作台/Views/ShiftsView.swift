@@ -24,9 +24,11 @@ public struct ShiftsView: View {
     
     public init() {}
     
-    // Calculate Monday of the selected week
+    // Calculate Monday of the selected week (周一至周日为完整排班周期)
     private var mondayOfSelectedWeek: Date {
-        let cal = Calendar.current
+        var cal = Calendar(identifier: .gregorian)
+        cal.firstWeekday = 2 // Monday is 1st day of week
+        cal.minimumDaysInFirstWeek = 4
         var comps = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())
         comps.weekday = 2 // Monday
         let monday = cal.date(from: comps) ?? Date()
@@ -665,15 +667,17 @@ public struct ShiftsView: View {
         df.dateFormat = "yyyy-MM-dd"
         guard let targetDate = df.date(from: dateStr) else { return }
         
-        let cal = Calendar.current
+        var cal = Calendar(identifier: .gregorian)
+        cal.firstWeekday = 2 // Monday is 1st day of week
+        cal.minimumDaysInFirstWeek = 4
+        
         var comps = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())
         comps.weekday = 2
         guard let thisMonday = cal.date(from: comps) else { return }
         
-        let targetComps = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: targetDate)
-        var targetMondayComps = targetComps
-        targetMondayComps.weekday = 2
-        guard let targetMonday = cal.date(from: targetMondayComps) else { return }
+        var targetComps = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: targetDate)
+        targetComps.weekday = 2
+        guard let targetMonday = cal.date(from: targetComps) else { return }
         
         let weeksDiff = cal.dateComponents([.weekOfYear], from: thisMonday, to: targetMonday).weekOfYear ?? 0
         self.currentWeekOffset = weeksDiff

@@ -628,13 +628,26 @@ public struct AnnouncementsView: View {
     // MARK: - Acknowledgment Card (Strict Role-Based Security)
     
     private func acknowledgmentCard(for item: Announcement) -> some View {
-        let totalMembers = max(store.allDiscoveredTeamMembers.count, item.acknowledgments.count)
-        let ackedCount = item.acknowledgments.count
+        let uniqueAcks: [AnnouncementAcknowledgment] = {
+            var map: [String: AnnouncementAcknowledgment] = [:]
+            for ack in item.acknowledgments {
+                let name = ack.memberName.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !name.isEmpty, name != "TestUser" else { continue }
+                if let ex = map[name] {
+                    if ack.acknowledgedAt > ex.acknowledgedAt { map[name] = ack }
+                } else {
+                    map[name] = ack
+                }
+            }
+            return Array(map.values).sorted { $0.acknowledgedAt < $1.acknowledgedAt }
+        }()
+        let totalMembers = max(store.allDiscoveredTeamMembers.count, uniqueAcks.count)
+        let ackedCount = uniqueAcks.count
         let unackedMembers = store.unacknowledgedMembers(for: item)
         let progress = totalMembers > 0 ? Double(ackedCount) / Double(totalMembers) : 0.0
         let isAuthor = (item.author == store.currentUser.name)
         let canViewTracker = isAuthor || store.canCurrentUserPublishAnnouncements || store.isCurrentUserAdmin
-        let currentUserAcked = item.acknowledgments.contains(where: { $0.memberName == store.currentUser.name })
+        let currentUserAcked = uniqueAcks.contains(where: { $0.memberName == store.currentUser.name })
         
         return VStack(alignment: .leading, spacing: 14) {
             // 1. Personal Action for Current Reader (Everyone sees this)
@@ -780,13 +793,13 @@ public struct AnnouncementsView: View {
                     }
                     
                     // Acknowledged Details List
-                    if !item.acknowledgments.isEmpty {
+                    if !uniqueAcks.isEmpty {
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("已确认已读成员 (\(item.acknowledgments.count) 人)")
+                            Text("已确认已读成员 (\(uniqueAcks.count) 人)")
                                 .font(.system(size: 11.5, weight: .semibold))
                                 .foregroundColor(.secondary)
                             
-                            ForEach(item.acknowledgments) { ack in
+                            ForEach(uniqueAcks) { ack in
                                 HStack(spacing: 6) {
                                     Image(systemName: "checkmark.circle.fill")
                                         .foregroundColor(.green)

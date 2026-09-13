@@ -17,6 +17,10 @@ public struct NpiIssueItem: Identifiable, Codable, Hashable {
     public var status: String       // 应对状态："需提交RTA" | "无需RTA" | "积极投票" | "需关注更新" | "已修复"
     public var emailSubject: String // 来源邮件主题
     
+    public var uniqueKey: String {
+        "\(id)_\(date)"
+    }
+    
     public init(
         id: String,
         date: String,

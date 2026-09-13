@@ -22,12 +22,15 @@ public class ChorusFAQSyncService: NSObject, ObservableObject {
     @Published public var isSyncing: Bool = false
     @Published public var lastSyncResult: String?
     @Published public var lastSyncTime: Date?
+    @Published public var lastSyncedBy: String?
     
     private let lastSyncTimeKey = "workbench_chorus_faq_last_sync_time"
+    private let lastSyncedByKey = "workbench_chorus_faq_last_synced_by"
     
     public override init() {
         super.init()
         self.lastSyncTime = UserDefaults.standard.object(forKey: lastSyncTimeKey) as? Date
+        self.lastSyncedBy = UserDefaults.standard.string(forKey: lastSyncedByKey)
     }
     
     /// Pre-compiled Knowledge Base entries for Chorus
@@ -1720,7 +1723,9 @@ public class ChorusFAQSyncService: NSObject, ObservableObject {
         
         let now = Date()
         self.lastSyncTime = now
+        self.lastSyncedBy = store.currentUser.name
         UserDefaults.standard.set(self.lastSyncTime, forKey: lastSyncTimeKey)
+        UserDefaults.standard.set(self.lastSyncedBy, forKey: lastSyncedByKey)
         
         // Save sync meta to shared folder if connected
         if let baseURL = SharedFolderSyncService.shared.sharedFolderURL, SharedFolderSyncService.shared.isConnected {
@@ -1804,7 +1809,9 @@ public class ChorusFAQSyncService: NSObject, ObservableObject {
         
         let categorySyncNow = Date()
         self.lastSyncTime = categorySyncNow
+        self.lastSyncedBy = store.currentUser.name
         UserDefaults.standard.set(self.lastSyncTime, forKey: lastSyncTimeKey)
+        UserDefaults.standard.set(self.lastSyncedBy, forKey: lastSyncedByKey)
         
         if let baseURL = SharedFolderSyncService.shared.sharedFolderURL, SharedFolderSyncService.shared.isConnected {
             let metaURL = baseURL.appendingPathComponent("faq/sync_meta.json")

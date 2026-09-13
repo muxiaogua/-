@@ -25,9 +25,11 @@ public struct TeamShiftsView: View {
     
     public init() {}
     
-    // Calculate Monday of the selected week
+    // Calculate Monday of the selected week (周一至周日为完整排班周期)
     private var mondayOfSelectedWeek: Date {
-        let cal = Calendar.current
+        var cal = Calendar(identifier: .gregorian)
+        cal.firstWeekday = 2 // Monday is 1st day of week
+        cal.minimumDaysInFirstWeek = 4
         var comps = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())
         comps.weekday = 2 // Monday
         let monday = cal.date(from: comps) ?? Date()

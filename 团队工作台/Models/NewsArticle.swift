@@ -12,6 +12,10 @@ public enum NewsCategory: String, Codable, CaseIterable, Identifiable {
     
     public var id: String { rawValue }
     
+    public static var allCases: [NewsCategory] {
+        [.unread, .greenEmail, .slackSupport]
+    }
+    
     public var iconName: String {
         switch self {
         case .unread: return "envelope.badge.fill"

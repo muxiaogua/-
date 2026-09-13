@@ -5,7 +5,6 @@
 
 import SwiftUI
 import AppKit
-import RelaxKit
 
 public struct ContentView: View {
     @EnvironmentObject var store: WorkbenchStore
@@ -35,7 +34,13 @@ public struct ContentView: View {
             
             Divider()
             
-            // 3. Main Content View Area
+            // 3. Sub-Navigation Bar (分类含有多个子菜单时自动呈现横向子导航切换栏)
+            if store.selectedCategory.subItems.count > 1 {
+                subNavigationBar
+                Divider()
+            }
+            
+            // 4. Main Content View Area
             mainContentArea
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -51,6 +56,9 @@ public struct ContentView: View {
         .sheet(isPresented: $updateService.showUpdateSheet) {
             AppUpdateSheetView()
         }
+        .sheet(item: $store.masterSyncResult) { result in
+            MasterSyncReportSheet(result: result)
+        }
         .onAppear {
             updateService.checkForUpdates(isUserInitiated: false)
         }
@@ -63,15 +71,12 @@ public struct ContentView: View {
             // Left: Logo + Title + Subtitle
             HStack(spacing: 10) {
                 // Logo Icon
-                ZStack {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(LinearGradient(colors: [Color.blue, Color.accentColor], startPoint: .topLeading, endPoint: .bottomTrailing))
-                        .frame(width: 36, height: 36)
-                    
-                    Text("JT")
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-                }
+                Image("AppLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 36, height: 36)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .shadow(color: Color.black.opacity(0.12), radius: 3, x: 0, y: 1)
                 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Jason Team")
@@ -90,7 +95,7 @@ public struct ContentView: View {
                     Circle()
                         .fill(Color.green)
                         .frame(width: 7, height: 7)
-                    Text("云端连接正常 (10s 自动轮询)")
+                    Text("云端连接正常")
                         .font(.system(size: 11.5, weight: .medium))
                         .foregroundColor(.green)
                 }
@@ -117,29 +122,93 @@ public struct ContentView: View {
                 .clipShape(Capsule())
             }
             
-            // Refresh Button
-            Button(action: {
-                isRefreshing = true
-                store.forceSyncAllWithSharedFolder()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-                    isRefreshing = false
+            // Master Check Updates Button (一键检查全部更新) - 仅限有同步权限的成员可见
+            if store.canCurrentUserSyncData {
+                HStack(spacing: 8) {
+                    Button(action: {
+                        Task {
+                            await store.performMasterSync()
+                        }
+                    }) {
+                        HStack(spacing: 5) {
+                            if store.isMasterSyncing {
+                                ProgressView()
+                                    .scaleEffect(0.6)
+                                    .frame(width: 13, height: 13)
+                                Text("全模块检查中...")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(.blue)
+                            } else {
+                                Image(systemName: "arrow.triangle.2.circlepath.circle.fill")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.blue)
+                                Text("检查更新")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(.primary)
+                            }
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4.5)
+                        .background(Color.blue.opacity(0.10))
+                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .stroke(Color.blue.opacity(0.25), lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(store.isMasterSyncing)
+                    .help("一键检查全部板块更新：NPI邮件、NPI议题、RCC FAQ、重要邮件、Chorus知识库、官网最新价格以及团队共享数据")
+                    
+                    if let info = store.latestUpdateDisplayInfo {
+                        HStack(spacing: 4) {
+                            Image(systemName: "clock")
+                                .font(.system(size: 10))
+                            Text(store.formatLatestSyncTime(info.time, syncedBy: info.by))
+                                .font(.system(size: 11))
+                        }
+                        .foregroundColor(.secondary)
+                        .help("最近更新时间：\(store.formatFullDateTime(info.time))\(info.by.isEmpty ? "" : "，执行人: \(info.by)")")
+                    }
                 }
-            }) {
-                HStack(spacing: 4) {
-                    Image(systemName: "arrow.triangle.2.circlepath")
-                        .font(.system(size: 11))
-                        .rotationEffect(isRefreshing ? .degrees(360) : .zero)
-                        .animation(isRefreshing ? .linear(duration: 0.6).repeatForever(autoreverses: false) : .default, value: isRefreshing)
-                    Text("刷新")
-                        .font(.system(size: 12, weight: .medium))
+            } else if sharedFolderSync.isConnected {
+                HStack(spacing: 8) {
+                    // 普通成员仅展示轻量从云端共享文件夹刷新
+                    Button(action: {
+                        isRefreshing = true
+                        store.loadDataFromSharedFolder()
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                            isRefreshing = false
+                        }
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                                .font(.system(size: 11))
+                                .rotationEffect(isRefreshing ? .degrees(360) : .zero)
+                                .animation(isRefreshing ? .linear(duration: 0.6).repeatForever(autoreverses: false) : .default, value: isRefreshing)
+                            Text("刷新")
+                                .font(.system(size: 12, weight: .medium))
+                        }
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 4.5)
+                        .background(Color.secondary.opacity(0.08))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                    }
+                    .buttonStyle(.plain)
+                    .help("从团队共享文件夹拉取最新的公告、排班与云端数据")
+                    
+                    if let info = store.latestUpdateDisplayInfo {
+                        HStack(spacing: 4) {
+                            Image(systemName: "clock")
+                                .font(.system(size: 10))
+                            Text(store.formatLatestSyncTime(info.time, syncedBy: info.by))
+                                .font(.system(size: 11))
+                        }
+                        .foregroundColor(.secondary)
+                        .help("最近更新时间：\(store.formatFullDateTime(info.time))\(info.by.isEmpty ? "" : "，执行人: \(info.by)")")
+                    }
                 }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 4)
-                .background(Color.secondary.opacity(0.08))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
             }
-            .buttonStyle(.plain)
-            .help("立即执行全员数据双向对齐与云端拉取")
             
             Spacer()
             
@@ -149,7 +218,7 @@ public struct ContentView: View {
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
                 
-                TextField("全局搜索案例号、公告、邮件、问答...", text: $store.searchText)
+                TextField("全局搜索知识库、SOP、公告、邮件、问答...", text: $store.searchText)
                     .textFieldStyle(.plain)
                     .font(.system(size: 12.5))
                 
@@ -222,9 +291,12 @@ public struct ContentView: View {
             dashboardButton
             
             // Dropdown Menus for Categories
-            ForEach(AppNavigationCategory.allCases.filter { $0 != .dashboard }) { cat in
+            ForEach(AppNavigationCategory.allCases.filter { $0 != .dashboard && $0 != .songKouQi }) { cat in
                 categoryDropdownMenu(for: cat)
             }
+            
+            // 松口气独立顶级菜单按钮
+            relaxButton
             
             if store.canCurrentUserPublishAnnouncements && store.selectedNavigation == .publish {
                 tabButton(title: "发布中心", icon: "square.and.pencil", item: .publish)
@@ -264,64 +336,132 @@ public struct ContentView: View {
         let isSelected = (store.selectedNavigation == .dashboard)
         
         return Button(action: {
-            store.selectedCategory = .dashboard
-            store.selectedNavigation = .dashboard
+            withAnimation(.easeInOut(duration: 0.15)) {
+                store.selectedCategory = .dashboard
+                store.selectedNavigation = .dashboard
+            }
         }) {
             HStack(spacing: 6) {
                 Image(systemName: "square.grid.2x2.fill")
-                    .font(.system(size: 13.5, weight: isSelected ? .semibold : .regular))
+                    .font(.system(size: 13, weight: isSelected ? .bold : .medium))
                 
                 Text("首页概览")
-                    .font(.system(size: 14, weight: isSelected ? .bold : .medium))
+                    .font(.system(size: 13.5, weight: isSelected ? .bold : .medium))
             }
-            .padding(.horizontal, 13)
-            .padding(.vertical, 7)
-            .background(isSelected ? Color.blue.opacity(0.14) : Color.clear)
-            .foregroundColor(isSelected ? Color.blue : Color.primary.opacity(0.88))
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(
+                isSelected
+                ? AnyView(
+                    LinearGradient(colors: [Color.blue, Color.blue.opacity(0.88)], startPoint: .top, endPoint: .bottom)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .shadow(color: Color.blue.opacity(0.3), radius: 3, y: 1.5)
+                )
+                : AnyView(
+                    Color(NSColor.controlBackgroundColor)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                )
+            )
+            .foregroundColor(isSelected ? .white : .primary.opacity(0.85))
+        }
+        .buttonStyle(.plain)
+    }
+    
+    private var relaxButton: some View {
+        let isSelected = (store.selectedNavigation == .relax)
+        
+        return Button(action: {
+            withAnimation(.easeInOut(duration: 0.15)) {
+                store.selectedCategory = .songKouQi
+                store.selectedNavigation = .relax
+            }
+        }) {
+            HStack(spacing: 6) {
+                Image(systemName: "wind")
+                    .font(.system(size: 13, weight: isSelected ? .bold : .medium))
+                
+                Text("松口气")
+                    .font(.system(size: 13.5, weight: isSelected ? .bold : .medium))
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(
+                isSelected
+                ? AnyView(
+                    LinearGradient(colors: [Color.teal, Color.teal.opacity(0.88)], startPoint: .top, endPoint: .bottom)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .shadow(color: Color.teal.opacity(0.3), radius: 3, y: 1.5)
+                )
+                : AnyView(
+                    Color(NSColor.controlBackgroundColor)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                )
+            )
+            .foregroundColor(isSelected ? .white : .primary.opacity(0.85))
         }
         .buttonStyle(.plain)
     }
     
     private func categoryDropdownMenu(for cat: AppNavigationCategory) -> some View {
-        let isSelected = (store.selectedCategory == cat)
+        let isSelected = (store.selectedNavigation?.category == cat || store.selectedCategory == cat)
         let badge = badgeCountForCategory(cat)
+        let themeColor = cat.themeColor
         
         return ZStack(alignment: .topTrailing) {
             Menu {
                 ForEach(cat.subItems, id: \.self) { (subItem: AppNavigationItem) in
                     let subBadge = badgeCountForSubItem(subItem)
+                    let isSubSelected = (store.selectedNavigation == subItem)
                     
                     Button(action: {
-                        store.selectedCategory = cat
-                        store.selectedNavigation = subItem
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            store.selectedCategory = cat
+                            store.selectedNavigation = subItem
+                        }
                     }) {
-                        if let count = subBadge, count > 0 {
-                            Text("\(subItem.rawValue) (\(count)条未读)")
-                        } else {
-                            Text(subItem.rawValue)
+                        HStack {
+                            if isSubSelected {
+                                Text("✓  \(subItem.rawValue)")
+                            } else {
+                                Text("    \(subItem.rawValue)")
+                            }
+                            if let count = subBadge, count > 0 {
+                                Text(" (\(count)条未读)")
+                            }
                         }
                     }
                 }
             } label: {
                 HStack(spacing: 5) {
                     Image(systemName: cat.iconName)
-                        .font(.system(size: 13.5, weight: isSelected ? .semibold : .regular))
+                        .font(.system(size: 13, weight: isSelected ? .bold : .medium))
+                        .foregroundColor(isSelected ? .white : themeColor)
                     
                     Text(cat.rawValue)
-                        .font(.system(size: 14, weight: isSelected ? .bold : .medium))
+                        .font(.system(size: 13.5, weight: isSelected ? .bold : .medium))
+                        .lineLimit(1)
                     
                     Image(systemName: "chevron.down")
-                        .font(.system(size: 8.5, weight: .bold))
-                        .foregroundColor(isSelected ? Color.blue : Color.secondary)
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundColor(isSelected ? .white.opacity(0.85) : .secondary)
                 }
-                .padding(.horizontal, 13)
-                .padding(.vertical, 7)
-                .background(isSelected ? Color.blue.opacity(0.14) : Color(NSColor.controlBackgroundColor))
-                .foregroundColor(isSelected ? Color.blue : Color.primary.opacity(0.88))
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(
+                    isSelected
+                    ? AnyView(
+                        LinearGradient(colors: [themeColor, themeColor.opacity(0.86)], startPoint: .top, endPoint: .bottom)
+                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            .shadow(color: themeColor.opacity(0.32), radius: 3, y: 1.5)
+                    )
+                    : AnyView(
+                        Color(NSColor.controlBackgroundColor)
+                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    )
+                )
+                .foregroundColor(isSelected ? .white : .primary.opacity(0.85))
             }
-            .menuStyle(.borderlessButton)
+            .buttonStyle(.plain)
             
             // 独立的浮层角标，不受 NSMenu 按钮自身裁切影响
             if let count = badge, count > 0 {
@@ -343,10 +483,76 @@ public struct ContentView: View {
         }
     }
     
+    // MARK: - 3. Secondary Sub-Navigation Bar
+    
+    private var subNavigationBar: some View {
+        let currentCat = store.selectedCategory
+        let catColor = currentCat.themeColor
+        
+        return HStack(spacing: 6) {
+            HStack(spacing: 4) {
+                Image(systemName: currentCat.iconName)
+                    .font(.system(size: 11))
+                    .foregroundColor(catColor)
+                Text(currentCat.rawValue)
+                    .font(.system(size: 11.5, weight: .bold))
+                    .foregroundColor(catColor)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundColor(catColor.opacity(0.6))
+            }
+            .padding(.leading, 4)
+            .padding(.trailing, 2)
+            
+            ForEach(currentCat.subItems, id: \.self) { item in
+                let isCurrent = (store.selectedNavigation == item)
+                let badge = badgeCountForSubItem(item)
+                
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        store.selectedNavigation = item
+                    }
+                }) {
+                    HStack(spacing: 4.5) {
+                        Image(systemName: item.iconName)
+                            .font(.system(size: 10.5, weight: isCurrent ? .bold : .medium))
+                        
+                        Text(item.rawValue)
+                            .font(.system(size: 11.5, weight: isCurrent ? .bold : .medium))
+                        
+                        if let count = badge, count > 0 {
+                            Text("\(count)")
+                                .font(.system(size: 9, weight: .heavy, design: .rounded))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 0.5)
+                                .background(Color.red)
+                                .clipShape(Capsule())
+                        }
+                    }
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(isCurrent ? catColor : Color(NSColor.controlBackgroundColor))
+                    .foregroundColor(isCurrent ? Color.white : Color.primary.opacity(0.85))
+                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    .shadow(color: isCurrent ? catColor.opacity(0.3) : Color.clear, radius: 2, y: 1)
+                }
+                .buttonStyle(.plain)
+            }
+            
+            Spacer()
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 5)
+        .background(Color(NSColor.controlBackgroundColor).opacity(0.6))
+    }
+    
     private func badgeCountForCategory(_ cat: AppNavigationCategory) -> Int? {
         switch cat {
         case .teamShare:
             return store.unreadAnnouncementsCount > 0 ? store.unreadAnnouncementsCount : nil
+        case .npiFocus:
+            return store.unreadNpiEmailsCount > 0 ? store.unreadNpiEmailsCount : nil
         case .queryCenter:
             return store.unreadNewsCount > 0 ? store.unreadNewsCount : nil
         default:
@@ -358,6 +564,8 @@ public struct ContentView: View {
         switch item {
         case .announcements:
             return store.unreadAnnouncementsCount > 0 ? store.unreadAnnouncementsCount : nil
+        case .npiEmails:
+            return store.unreadNpiEmailsCount > 0 ? store.unreadNpiEmailsCount : nil
         case .news:
             return store.unreadNewsCount > 0 ? store.unreadNewsCount : nil
         default:
@@ -414,9 +622,11 @@ public struct ContentView: View {
                 case .leaveRequest:
                     PlaceholderReservedView(title: "我要请假", icon: "airplane.departure", subtitle: "个人假期申请与请假进度追踪功能正在规划中，即将上线！")
                 case .myStats:
-                    PlaceholderReservedView(title: "数据统计", icon: "chart.bar.xaxis", subtitle: "个人业务指标与工作数据分析看板正在建设中，即将上线！")
+                    MyStatsView()
                     
                 // NPI专题
+                case .npiEmails:
+                    NPIMailsView()
                 case .npiQuery:
                     NPIQueryView()
                 case .rccFaqNpi:
@@ -434,15 +644,15 @@ public struct ContentView: View {
                 case .caseAssistance:
                     PlaceholderReservedView(title: "案例协助", icon: "bubble.left.and.exclamationmark.bubble.right.fill", subtitle: "疑难案例团队求助与协同讨论专区正在建设中，即将上线！")
                 case .sharedKnowledge:
-                    PlaceholderReservedView(title: "共享知识库", icon: "books.vertical.fill", subtitle: "团队沉淀知识库与经验总结专区正在规划中，即将上线！")
+                    SharedKnowledgeView()
                     
                 // 小工具
                 case .luckyWheel:
                     LuckyWheelView()
                 case .dateCalculator:
                     DateCalculatorView()
-                case .mindRetreat:
-                    RelaxMainView()
+                case .relax:
+                    SongKouQiMainView()
                     
                 // 特殊页面
                 case .publish:
@@ -458,4 +668,90 @@ public struct ContentView: View {
 #Preview {
     ContentView()
         .environmentObject(WorkbenchStore())
+}
+
+// MARK: - Master Sync Report Sheet (全模块检查更新审计看板)
+
+struct MasterSyncReportSheet: View {
+    let result: MasterSyncResult
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(Color.green.opacity(0.12))
+                        .frame(width: 44, height: 44)
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 26))
+                        .foregroundColor(.green)
+                }
+                
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("全模块检查更新完成")
+                        .font(.system(size: 16, weight: .bold))
+                    Text("检查执行人：\(result.syncedBy) · \(formatTime(result.timestamp))")
+                        .font(.system(size: 11.5))
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+            }
+            .padding(.top, 4)
+            
+            Divider()
+            
+            VStack(alignment: .leading, spacing: 10) {
+                resultRow(icon: "envelope.fill", color: .green, title: "重要邮件 (绿邮 / Slack)", detail: "当前共收录 \(result.greenEmailCount) 封\(result.greenEmailNew > 0 ? "（新发现 \(result.greenEmailNew) 封）" : "（已是最新）")")
+                resultRow(icon: "flame.fill", color: .orange, title: "NPI 重点邮件与议题", detail: "当前共收录 \(result.npiEmailCount) 封\(result.npiEmailNew > 0 ? "（新收录 \(result.npiEmailNew) 封）" : "（已是最新）")")
+                resultRow(icon: "questionmark.bubble.fill", color: .teal, title: "Chorus 问答知识库", detail: "共校验 \(result.faqCount) 条（已包含 RCC FAQ_NPI 专项）")
+                resultRow(icon: "tag.fill", color: .indigo, title: "Apple 官网公示价格", detail: result.priceDiffCount > 0 ? "检测到 \(result.priceDiffCount) 处价格或机型变动" : "全系列官方公示维修价格一致")
+                resultRow(icon: "icloud.fill", color: .blue, title: "团队共享数据", detail: "公告、排班、花名册与权限已对齐云端")
+            }
+            .padding(14)
+            .background(Color(NSColor.controlBackgroundColor))
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(Color.secondary.opacity(0.12), lineWidth: 1)
+            )
+            
+            HStack {
+                Spacer()
+                Button("知道了") {
+                    dismiss()
+                }
+                .keyboardShortcut(.defaultAction)
+                .buttonStyle(.borderedProminent)
+                .controlSize(.regular)
+            }
+            .padding(.top, 2)
+        }
+        .padding(22)
+        .frame(width: 450)
+    }
+    
+    private func resultRow(icon: String, color: Color, title: String, detail: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 13.5))
+                .foregroundColor(color)
+                .frame(width: 20)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 12.5, weight: .semibold))
+                Text(detail)
+                    .font(.system(size: 11.5))
+                    .foregroundColor(.secondary)
+            }
+            Spacer()
+        }
+    }
+    
+    private func formatTime(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd HH:mm"
+        return f.string(from: date)
+    }
 }

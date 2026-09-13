@@ -175,34 +175,36 @@ public struct RCCNPIFAQView: View {
                 .clipShape(Capsule())
             
             // Sync Button
-            Button(action: {
-                _ = chorusSync.syncChorusCategory("RCC FAQ_NPI", into: store)
-                showSyncAlert = true
-            }) {
-                HStack(spacing: 5) {
-                    if chorusSync.isSyncing {
-                        ProgressView()
-                            .controlSize(.small)
-                    } else {
-                        Image(systemName: "arrow.triangle.2.circlepath")
-                            .font(.system(size: 11, weight: .semibold))
+            if store.canCurrentUserSyncData {
+                Button(action: {
+                    _ = chorusSync.syncChorusCategory("RCC FAQ_NPI", into: store)
+                    showSyncAlert = true
+                }) {
+                    HStack(spacing: 5) {
+                        if chorusSync.isSyncing {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                                .font(.system(size: 11, weight: .semibold))
+                        }
+                        Text(chorusSync.isSyncing ? "检查中..." : "检查更新知识库")
+                            .font(.system(size: 12, weight: .medium))
                     }
-                    Text("刷新知识库")
-                        .font(.system(size: 12, weight: .medium))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color(NSColor.controlBackgroundColor))
+                    .foregroundColor(.accentColor)
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(Color.accentColor.opacity(0.4), lineWidth: 1)
+                    )
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(Color(NSColor.controlBackgroundColor))
-                .foregroundColor(.accentColor)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 6)
-                        .stroke(Color.accentColor.opacity(0.4), lineWidth: 1)
-                )
+                .buttonStyle(.plain)
+                .disabled(chorusSync.isSyncing)
+                .help("从 Chorus 页面 8077018 校验并更新最新问答内容")
             }
-            .buttonStyle(.plain)
-            .disabled(chorusSync.isSyncing)
-            .help("从 Chorus 页面 8077018 校验并更新最新问答内容")
         }
         .padding(14)
         .background(Color(NSColor.controlBackgroundColor))
